@@ -1,4 +1,4 @@
-const preguntasBloque11 = [
+window.preguntasBloque11 = [
   {
     pregunta: "Según la introducción, ¿qué permite a los individuos adaptarse a las necesidades de su entorno?",
     opciones: [

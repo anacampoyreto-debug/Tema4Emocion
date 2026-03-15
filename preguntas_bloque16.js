@@ -1,4 +1,4 @@
-const preguntasBloque16 = [
+window.preguntasBloque16 = [
   {
     pregunta: "Históricamente, la distinción entre procesos cognitivos y emocionales se basaba en que los primeros son voluntarios y permiten el conocimiento del mundo, mientras que la emoción:",
     opciones: [

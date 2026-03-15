@@ -1,4 +1,4 @@
-const preguntasBloque1 = [
+window.preguntasBloque1 = [
   {
     pregunta: "Históricamente, los procesos cognitivos se han asociado a:",
     opciones: [

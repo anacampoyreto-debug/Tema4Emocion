@@ -1,4 +1,4 @@
-const preguntasBloque12 = [
+window.preguntasBloque12 = [
   {
     pregunta: "Según Lazarus (1991), el 'verdadero interés' de la psicología experimental de las emociones es poder distinguir:",
     opciones: [

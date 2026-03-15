@@ -279,3 +279,62 @@ correcta: 1
 
 ]
 },
+.bloques-card h3 {
+  margin-bottom: 8px;
+}
+
+.grid-bloques {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.bloque-card {
+  border: none;
+  border-radius: 18px;
+  padding: 18px 16px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8, #1e3a8a);
+  color: white;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.bloque-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 28px rgba(30, 64, 175, 0.28);
+}
+
+.bloque-card-numero {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.bloque-card-subtitulo {
+  font-size: 0.9rem;
+  opacity: 0.92;
+}
+
+@media (max-width: 1000px) {
+  .grid-bloques {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .grid-bloques {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .grid-bloques {
+    grid-template-columns: 1fr;
+  }
+}

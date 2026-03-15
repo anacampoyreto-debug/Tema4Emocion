@@ -1,34 +1,24 @@
-const QUIZ_EL = document.getElementById("quiz");
-const ESTADO_MODO_EL = document.getElementById("estadoModo");
-const PROGRESO_TEXTO_EL = document.getElementById("progresoTexto");
-const BARRA_PROGRESO_EL = document.getElementById("barraProgreso");
-
-const STORAGE_RANKING = "tema4_ranking";
-const STORAGE_ESTADO = "tema4_estado_actual";
-
-let bancoPreguntas = [];
+let bloqueActual = 1;
 let preguntasActuales = [];
-let indiceActual = 0;
-let respuestasUsuario = [];
-let modoActual = "simulador";
-let nombreJugador = "";
-let temporizadorIntervalo = null;
-let tiempoRestante = null;
-let esModoExamen = false;
-let colaRepaso = [];
-let resultadoYaGuardado = false;
+let indice = 0;
+let correctas = 0;
+let fallos = 0;
+let respondida = false;
+let xp = 0;
+let respondidas = 0;
+let simulacrosCompletados = 0;
+let modo = "entrenamiento";
+let temporizador = null;
+let tiempoRestante = 0;
+
+const STORAGE_CLAVE = "tema4_estado_bloques";
 
 /* =========================
    UTILIDADES
 ========================= */
 
-function mezclarArray(array) {
-  const copia = [...array];
-  for (let i = copia.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copia[i], copia[j]] = [copia[j], copia[i]];
-  }
-  return copia;
+function $(id) {
+  return document.getElementById(id);
 }
 
 function escaparHTML(texto) {
@@ -40,980 +30,454 @@ function escaparHTML(texto) {
     .replaceAll("'", "&#039;");
 }
 
-function obtenerTextoPregunta(item) {
-  return item.pregunta || item.enunciado || item.texto || item.question || "Pregunta sin texto";
-}
-
-function obtenerOpciones(item) {
-  if (Array.isArray(item.opciones)) return item.opciones;
-  if (Array.isArray(item.respuestas)) return item.respuestas;
-  if (Array.isArray(item.options)) return item.options;
-  return [];
-}
-
-function obtenerRespuestaCorrecta(item) {
-  if (typeof item.correcta !== "undefined") return item.correcta;
-  if (typeof item.correcto !== "undefined") return item.correcto;
-  if (typeof item.respuestaCorrecta !== "undefined") return item.respuestaCorrecta;
-  if (typeof item.respuesta !== "undefined") return item.respuesta;
-  if (typeof item.answer !== "undefined") return item.answer;
-  return null;
-}
-
-function normalizarPregunta(item, origen = "General") {
-  return {
-    bloque: item.bloque || origen,
-    pregunta: obtenerTextoPregunta(item),
-    opciones: obtenerOpciones(item),
-    correcta: obtenerRespuestaCorrecta(item),
-    explicacion: item.explicacion || "",
-    repeticiones: item.repeticiones || 0
-  };
-}
-
-function esArrayDePreguntas(valor) {
-  if (!Array.isArray(valor) || valor.length === 0) return false;
-  const ejemplo = valor[0];
-  return (
-    ejemplo &&
-    typeof ejemplo === "object" &&
-    ("pregunta" in ejemplo || "enunciado" in ejemplo || "texto" in ejemplo || "question" in ejemplo) &&
-    ("opciones" in ejemplo || "respuestas" in ejemplo || "options" in ejemplo)
-  );
-}
-
-function obtenerNumeroDeBloque(nombreBloque) {
-  const match = String(nombreBloque).match(/\d+/);
-  return match ? Number(match[0]) : 999;
-}
-
-function obtenerBloquesDisponibles() {
-  const unicos = [...new Set(bancoPreguntas.map((p) => p.bloque))];
-  return unicos.sort((a, b) => obtenerNumeroDeBloque(a) - obtenerNumeroDeBloque(b));
-}
-
-function obtenerIndiceCorrecto(item) {
-  if (typeof item.correcta === "number") return item.correcta;
-
-  if (typeof item.correcta === "string") {
-    return item.opciones.findIndex(
-      (op) => String(op).trim() === String(item.correcta).trim()
-    );
+function mezclarArray(array) {
+  const copia = [...array];
+  for (let i = copia.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copia[i], copia[j]] = [copia[j], copia[i]];
   }
-
-  return -1;
+  return copia;
 }
 
-function estaRespuestaBien(item, respuestaUsuario) {
-  if (respuestaUsuario === null || typeof respuestaUsuario === "undefined") return false;
-
-  if (typeof item.correcta === "number") {
-    return respuestaUsuario === item.correcta;
-  }
-
-  const opcionTexto = item.opciones[respuestaUsuario];
-  return String(opcionTexto).trim() === String(item.correcta).trim();
-}
-
-function gestionarRepeticionInteligente(item, respuestaMarcada) {
-  const acertada = estaRespuestaBien(item, respuestaMarcada);
-
-  if (modoActual !== "memoria-activa" && modoActual !== "repaso-errores") {
-    return;
-  }
-
-  if (!acertada) {
-    const repeticionesActuales = item.repeticiones || 0;
-
-    if (repeticionesActuales < 2) {
-      colaRepaso.push({
-        ...item,
-        repeticiones: repeticionesActuales + 1
-      });
-    }
+function obtenerNivelTexto() {
+  if (xp < 100) {
+    return "Apertura estratégica";
+  } else if (xp < 250) {
+    return "Exploradora táctica";
+  } else if (xp < 500) {
+    return "Arquitecta del dominio";
+  } else if (xp < 900) {
+    return "Estratega de alto rendimiento";
+  } else {
+    return "Maestra del tema";
   }
 }
 
-function resetearEstadoModo() {
-  indiceActual = 0;
-  respuestasUsuario = [];
-  tiempoRestante = null;
-  esModoExamen = false;
-  colaRepaso = [];
-  resultadoYaGuardado = false;
-}
-
-/* =========================
-   CARGA DE BLOQUES
-========================= */
-
-function recogerPreguntasDelWindow() {
-  const bloquesDetectados = [
-    typeof preguntasBloque1 !== "undefined" ? { nombre: "Bloque 1", datos: preguntasBloque1 } : null,
-    typeof preguntasBloque2 !== "undefined" ? { nombre: "Bloque 2", datos: preguntasBloque2 } : null,
-    typeof preguntasBloque3 !== "undefined" ? { nombre: "Bloque 3", datos: preguntasBloque3 } : null,
-    typeof preguntasBloque4 !== "undefined" ? { nombre: "Bloque 4", datos: preguntasBloque4 } : null,
-    typeof preguntasBloque5 !== "undefined" ? { nombre: "Bloque 5", datos: preguntasBloque5 } : null,
-    typeof preguntasBloque6 !== "undefined" ? { nombre: "Bloque 6", datos: preguntasBloque6 } : null,
-    typeof preguntasBloque7 !== "undefined" ? { nombre: "Bloque 7", datos: preguntasBloque7 } : null,
-    typeof preguntasBloque8 !== "undefined" ? { nombre: "Bloque 8", datos: preguntasBloque8 } : null,
-    typeof preguntasBloque9 !== "undefined" ? { nombre: "Bloque 9", datos: preguntasBloque9 } : null,
-    typeof preguntasBloque10 !== "undefined" ? { nombre: "Bloque 10", datos: preguntasBloque10 } : null,
-    typeof preguntasBloque11 !== "undefined" ? { nombre: "Bloque 11", datos: preguntasBloque11 } : null,
-    typeof preguntasBloque12 !== "undefined" ? { nombre: "Bloque 12", datos: preguntasBloque12 } : null,
-    typeof preguntasBloque13 !== "undefined" ? { nombre: "Bloque 13", datos: preguntasBloque13 } : null,
-    typeof preguntasBloque14 !== "undefined" ? { nombre: "Bloque 14", datos: preguntasBloque14 } : null,
-    typeof preguntasBloque15 !== "undefined" ? { nombre: "Bloque 15", datos: preguntasBloque15 } : null,
-    typeof preguntasBloque16 !== "undefined" ? { nombre: "Bloque 16", datos: preguntasBloque16 } : null,
-    typeof preguntasBloque17 !== "undefined" ? { nombre: "Bloque 17", datos: preguntasBloque17 } : null,
-    typeof preguntasBloque18 !== "undefined" ? { nombre: "Bloque 18", datos: preguntasBloque18 } : null,
-    typeof preguntasBloque19 !== "undefined" ? { nombre: "Bloque 19", datos: preguntasBloque19 } : null,
-    typeof preguntasBloque20 !== "undefined" ? { nombre: "Bloque 20", datos: preguntasBloque20 } : null
-  ].filter(Boolean);
-
-  let todas = [];
-
-  bloquesDetectados.forEach((entrada) => {
-    if (esArrayDePreguntas(entrada.datos)) {
-      todas = todas.concat(
-        entrada.datos.map((pregunta) => normalizarPregunta(pregunta, entrada.nombre))
-      );
-    }
-  });
-
-  return todas;
-}
-
-/* =========================
-   CÁLCULOS
-========================= */
-
-function calcularAciertos() {
-  let aciertos = 0;
-
-  preguntasActuales.forEach((pregunta, i) => {
-    const respuesta = respuestasUsuario[i];
-    if (respuesta === null || typeof respuesta === "undefined") return;
-
-    if (estaRespuestaBien(pregunta, respuesta)) {
-      aciertos++;
-    }
-  });
-
-  return aciertos;
-}
-
-function calcularRespondidas() {
-  return respuestasUsuario.filter((r) => r !== null && typeof r !== "undefined").length;
-}
-
-function calcularFallosRespondidos() {
-  return calcularRespondidas() - calcularAciertos();
-}
-
-function calcularNotaSobre10() {
+function calcularNotaUNED() {
   if (!preguntasActuales.length) return 0;
 
-  const aciertos = calcularAciertos();
-  const fallos = calcularFallosRespondidos();
-  const puntuacion = aciertos - (fallos * 0.33);
+  const puntuacion = correctas - (fallos * 0.33);
   const nota = (puntuacion / preguntasActuales.length) * 10;
 
   return Math.max(0, nota);
 }
 
-/* =========================
-   ESTADO Y STORAGE
-========================= */
-
 function guardarEstado() {
-  localStorage.setItem(
-    STORAGE_ESTADO,
-    JSON.stringify({
-      preguntasActuales,
-      indiceActual,
-      respuestasUsuario,
-      modoActual,
-      nombreJugador,
-      tiempoRestante,
-      esModoExamen,
-      colaRepaso,
-      resultadoYaGuardado
-    })
-  );
+  const estado = {
+    bloqueActual,
+    preguntasActuales,
+    indice,
+    correctas,
+    fallos,
+    respondida,
+    xp,
+    respondidas,
+    simulacrosCompletados,
+    modo,
+    tiempoRestante
+  };
+
+  localStorage.setItem(STORAGE_CLAVE, JSON.stringify(estado));
 }
 
 function cargarEstado() {
-  const raw = localStorage.getItem(STORAGE_ESTADO);
+  const raw = localStorage.getItem(STORAGE_CLAVE);
   if (!raw) return false;
 
   try {
     const estado = JSON.parse(raw);
-    if (!estado || !Array.isArray(estado.preguntasActuales)) return false;
+    if (!estado) return false;
 
-    preguntasActuales = estado.preguntasActuales;
-    indiceActual = estado.indiceActual ?? 0;
-    respuestasUsuario = estado.respuestasUsuario ?? Array(preguntasActuales.length).fill(null);
-    modoActual = estado.modoActual ?? "simulador";
-    nombreJugador = estado.nombreJugador ?? "";
-    tiempoRestante = estado.tiempoRestante ?? null;
-    esModoExamen = estado.esModoExamen ?? false;
-    colaRepaso = Array.isArray(estado.colaRepaso) ? estado.colaRepaso : [];
-    resultadoYaGuardado = estado.resultadoYaGuardado ?? false;
+    bloqueActual = estado.bloqueActual ?? 1;
+    preguntasActuales = Array.isArray(estado.preguntasActuales) ? estado.preguntasActuales : [];
+    indice = estado.indice ?? 0;
+    correctas = estado.correctas ?? 0;
+    fallos = estado.fallos ?? 0;
+    respondida = estado.respondida ?? false;
+    xp = estado.xp ?? 0;
+    respondidas = estado.respondidas ?? 0;
+    simulacrosCompletados = estado.simulacrosCompletados ?? 0;
+    modo = estado.modo ?? "entrenamiento";
+    tiempoRestante = estado.tiempoRestante ?? 0;
 
-    return preguntasActuales.length > 0;
+    return true;
   } catch {
     return false;
   }
 }
 
 function borrarEstado() {
-  localStorage.removeItem(STORAGE_ESTADO);
-}
-
-function obtenerRanking() {
-  const raw = localStorage.getItem(STORAGE_RANKING);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function guardarEnRanking(nombre, nota, aciertos, total) {
-  const ranking = obtenerRanking();
-
-  ranking.push({
-    nombre: nombre || "Jugador",
-    nota: Number(nota.toFixed(2)),
-    aciertos,
-    total,
-    fecha: new Date().toLocaleString("es-ES")
-  });
-
-  ranking.sort((a, b) => {
-    if (b.nota !== a.nota) return b.nota - a.nota;
-    return b.aciertos - a.aciertos;
-  });
-
-  localStorage.setItem(STORAGE_RANKING, JSON.stringify(ranking.slice(0, 10)));
-}
-
-function pintarRankingHTML() {
-  const ranking = obtenerRanking();
-
-  if (!ranking.length) {
-    return `<p class="sin-ranking">Aún no hay resultados guardados.</p>`;
-  }
-
-  return `
-    <ol class="ranking-lista">
-      ${ranking.map((item) => `
-        <li class="ranking-item">
-          <strong>${escaparHTML(item.nombre)}</strong>
-          <span> · Nota ${item.nota}</span>
-          <span> · ${item.aciertos}/${item.total}</span>
-          <div class="ranking-fecha">${escaparHTML(item.fecha)}</div>
-        </li>
-      `).join("")}
-    </ol>
-  `;
+  localStorage.removeItem(STORAGE_CLAVE);
 }
 
 /* =========================
-   PROGRESO
+   BLOQUES
 ========================= */
 
-function actualizarAriaProgreso(porcentaje) {
-  const barraContenedor = document.querySelector(".barra-contenedor");
-  if (barraContenedor) {
-    barraContenedor.setAttribute("aria-valuenow", String(porcentaje));
+function inicializarSelectorBloques() {
+  const selector = $("selectorBloque");
+  if (!selector || typeof bancoBloques === "undefined") return;
+
+  selector.innerHTML = "";
+
+  Object.keys(bancoBloques).forEach((num) => {
+    if (bancoBloques[num] && bancoBloques[num].length > 0) {
+      const option = document.createElement("option");
+      option.value = num;
+      option.textContent = `Bloque ${num} · ${bancoBloques[num].length} preguntas`;
+      selector.appendChild(option);
+    }
+  });
+
+  selector.value = String(bloqueActual);
+}
+
+function cargarBloque(num) {
+  if (typeof bancoBloques === "undefined" || !bancoBloques[num]) return;
+
+  bloqueActual = parseInt(num, 10);
+  preguntasActuales = [...bancoBloques[bloqueActual]];
+  modo = "entrenamiento";
+  indice = 0;
+  correctas = 0;
+  fallos = 0;
+  respondidas = 0;
+  respondida = false;
+  tiempoRestante = 0;
+
+  detenerTemporizador();
+  actualizarModoTexto();
+  actualizarStats();
+
+  if ($("totalPreguntas")) {
+    $("totalPreguntas").innerText = preguntasActuales.length;
+  }
+
+  guardarEstado();
+  mostrarPregunta();
+}
+
+function cambiarBloque() {
+  const selector = $("selectorBloque");
+  if (!selector) return;
+  cargarBloque(selector.value);
+}
+
+function iniciarSimulacro() {
+  const selector = $("selectorBloque");
+  if (!selector || typeof bancoBloques === "undefined") return;
+
+  const num = selector.value;
+  bloqueActual = parseInt(num, 10);
+
+  const base = [...bancoBloques[bloqueActual]];
+  preguntasActuales = mezclarArray(base).slice(0, Math.min(20, base.length));
+
+  modo = "simulacro";
+  indice = 0;
+  correctas = 0;
+  fallos = 0;
+  respondidas = 0;
+  respondida = false;
+  tiempoRestante = 20 * 60;
+
+  actualizarModoTexto();
+  actualizarStats();
+
+  if ($("totalPreguntas")) {
+    $("totalPreguntas").innerText = preguntasActuales.length;
+  }
+
+  guardarEstado();
+  iniciarTemporizador();
+  mostrarPregunta();
+}
+
+function reiniciarSesion() {
+  correctas = 0;
+  fallos = 0;
+  respondidas = 0;
+  xp = 0;
+  simulacrosCompletados = 0;
+  respondida = false;
+  tiempoRestante = 0;
+
+  detenerTemporizador();
+  actualizarNivel();
+
+  const selector = $("selectorBloque");
+  if (selector) {
+    cargarBloque(selector.value);
+  } else {
+    cargarBloque(1);
   }
 }
 
-function actualizarProgreso() {
-  const total = preguntasActuales.length || 0;
-  const respondidas = calcularRespondidas();
-  const porcentaje = total ? Math.round((respondidas / total) * 100) : 0;
+/* =========================
+   PREGUNTAS
+========================= */
 
-  PROGRESO_TEXTO_EL.textContent =
-    total ? `${respondidas} de ${total} respondidas` : "Sin iniciar";
+function mostrarPregunta() {
+  if (!preguntasActuales.length) return;
+  if (indice < 0 || indice >= preguntasActuales.length) return;
 
-  BARRA_PROGRESO_EL.style.width = `${porcentaje}%`;
-  actualizarAriaProgreso(porcentaje);
+  const p = preguntasActuales[indice];
+  respondida = false;
+
+  if ($("numeroPregunta")) {
+    $("numeroPregunta").innerText = indice + 1;
+  }
+
+  if ($("pregunta")) {
+    $("pregunta").innerHTML = escaparHTML(p.pregunta);
+  }
+
+  const feedback = $("feedback");
+  if (feedback) {
+    feedback.className = "feedback oculto";
+    feedback.innerHTML = "";
+  }
+
+  let opcionesHTML = "";
+  p.opciones.forEach((opcion, i) => {
+    opcionesHTML += `
+      <button onclick="responder(${i})" id="opcion-${i}">
+        ${String.fromCharCode(65 + i)}) ${escaparHTML(opcion)}
+      </button>
+    `;
+  });
+
+  if ($("opciones")) {
+    $("opciones").innerHTML = opcionesHTML;
+  }
+
+  actualizarBarra();
+  guardarEstado();
 }
 
-function actualizarProgresoFinal() {
-  PROGRESO_TEXTO_EL.textContent = "Examen completado";
-  BARRA_PROGRESO_EL.style.width = "100%";
-  actualizarAriaProgreso(100);
+function responder(i) {
+  if (respondida) return;
+  if (!preguntasActuales[indice]) return;
+
+  respondida = true;
+  respondidas++;
+
+  const botones = document.querySelectorAll("#opciones button");
+  const pregunta = preguntasActuales[indice];
+  const correcta = pregunta.correcta;
+
+  botones.forEach((btn) => {
+    btn.classList.add("bloqueada");
+    btn.disabled = true;
+  });
+
+  const feedback = $("feedback");
+  if (feedback) {
+    feedback.classList.remove("oculto");
+  }
+
+  if (i === correcta) {
+    const btn = $(`opcion-${i}`);
+    if (btn) btn.classList.add("correcta");
+
+    correctas++;
+    xp += modo === "simulacro" ? 15 : 10;
+
+    if (feedback) {
+      feedback.className = "feedback correcto";
+      feedback.innerHTML = `
+        <strong>✅ Correcto</strong><br>
+        Has sumado ${modo === "simulacro" ? 15 : 10} XP.
+        ${pregunta.explicacion ? `<br><br><strong>Explicación:</strong> ${escaparHTML(pregunta.explicacion)}` : ""}
+      `;
+    }
+  } else {
+    const btnIncorrecta = $(`opcion-${i}`);
+    const btnCorrecta = $(`opcion-${correcta}`);
+
+    if (btnIncorrecta) btnIncorrecta.classList.add("incorrecta");
+    if (btnCorrecta) btnCorrecta.classList.add("correcta");
+
+    fallos++;
+
+    if (feedback) {
+      feedback.className = "feedback incorrecto";
+      feedback.innerHTML = `
+        <strong>❌ Incorrecto</strong><br>
+        <strong>Respuesta correcta:</strong> ${String.fromCharCode(65 + correcta)}) ${escaparHTML(pregunta.opciones[correcta])}
+        ${pregunta.explicacion ? `<br><br><strong>Explicación:</strong> ${escaparHTML(pregunta.explicacion)}` : ""}
+      `;
+    }
+  }
+
+  actualizarStats();
+  actualizarNivel();
+  guardarEstado();
+}
+
+function siguientePregunta() {
+  indice++;
+
+  if (indice >= preguntasActuales.length) {
+    finalizarSesion();
+    return;
+  }
+
+  mostrarPregunta();
+}
+
+/* =========================
+   FINAL
+========================= */
+
+function finalizarSesion() {
+  detenerTemporizador();
+
+  if (modo === "simulacro") {
+    simulacrosCompletados++;
+  }
+
+  const notaUNED = calcularNotaUNED();
+
+  alert(
+    `${modo === "simulacro" ? "Simulacro completado" : "Bloque completado"}.\n\n` +
+    `Aciertos: ${correctas}\n` +
+    `Fallos: ${fallos}\n` +
+    `Nota tipo UNED: ${notaUNED.toFixed(2)} / 10\n` +
+    `XP acumulada: ${xp}`
+  );
+
+  actualizarStats();
+  actualizarNivel();
+  guardarEstado();
+
+  if (modo === "simulacro") {
+    const selector = $("selectorBloque");
+    if (selector) {
+      cargarBloque(selector.value);
+    } else {
+      cargarBloque(bloqueActual);
+    }
+  } else {
+    indice = 0;
+    mostrarPregunta();
+  }
+}
+
+/* =========================
+   INTERFAZ
+========================= */
+
+function actualizarBarra() {
+  const porcentaje = preguntasActuales.length > 0
+    ? ((indice + 1) / preguntasActuales.length) * 100
+    : 0;
+
+  if ($("progreso")) {
+    $("progreso").style.width = porcentaje + "%";
+  }
+
+  if ($("porcentajeTexto")) {
+    $("porcentajeTexto").innerText = Math.round(porcentaje) + "% completado";
+  }
+}
+
+function actualizarStats() {
+  if ($("correctas")) $("correctas").innerText = correctas;
+  if ($("respondidasTexto")) $("respondidasTexto").innerText = respondidas;
+  if ($("fallosTexto")) $("fallosTexto").innerText = fallos;
+  if ($("xpTexto")) $("xpTexto").innerText = xp;
+  if ($("simulacrosTexto")) $("simulacrosTexto").innerText = simulacrosCompletados;
+}
+
+function actualizarModoTexto() {
+  if (!$("modoActual")) return;
+
+  $("modoActual").innerText =
+    modo === "simulacro" ? "Modo: simulacro UNED" : "Modo: entrenamiento";
+}
+
+function actualizarNivel() {
+  const nivelTexto = $("nivelTexto");
+  if (!nivelTexto) return;
+
+  nivelTexto.innerText = obtenerNivelTexto();
 }
 
 /* =========================
    TEMPORIZADOR
 ========================= */
 
-function iniciarModoExamen() {
-  const nombreInput = document.getElementById("nombreJugador");
-  nombreJugador = nombreInput ? nombreInput.value.trim() : "";
-
-  modoActual = "examen";
-  resetearEstadoModo();
-  esModoExamen = true;
-
-  preguntasActuales = mezclarArray(bancoPreguntas).slice(0, 30);
-  respuestasUsuario = Array(preguntasActuales.length).fill(null);
-  tiempoRestante = 30 * 60;
-
-  guardarEstado();
-  iniciarTemporizador();
-  renderPregunta();
-}
-
-function iniciarBloque(nombreBloque) {
-  const nombreInput = document.getElementById("nombreJugador");
-  nombreJugador = nombreInput ? nombreInput.value.trim() : "";
-
-  const preguntasDelBloque = bancoPreguntas.filter(
-    (pregunta) => pregunta.bloque === nombreBloque
-  );
-
-  modoActual = `bloque-${nombreBloque}`;
-  resetearEstadoModo();
-  detenerTemporizador();
-
-  preguntasActuales = [...preguntasDelBloque];
-  respuestasUsuario = Array(preguntasActuales.length).fill(null);
-
-  guardarEstado();
-  renderPregunta();
-}
-
 function iniciarTemporizador() {
   detenerTemporizador();
+  actualizarTemporizadorTexto();
 
-  if (!esModoExamen || tiempoRestante === null) return;
-
-  temporizadorIntervalo = setInterval(() => {
+  temporizador = setInterval(() => {
     tiempoRestante--;
+    actualizarTemporizadorTexto();
+    guardarEstado();
 
     if (tiempoRestante <= 0) {
       tiempoRestante = 0;
-      guardarEstado();
       detenerTemporizador();
-      alert("Se ha terminado el tiempo del examen.");
-      pantallaResultados();
-      return;
+      alert("Tiempo agotado. Se cerrará el simulacro.");
+      finalizarSesion();
     }
-
-    guardarEstado();
-    actualizarTemporizadorVisual();
   }, 1000);
 }
 
 function detenerTemporizador() {
-  if (temporizadorIntervalo) {
-    clearInterval(temporizadorIntervalo);
-    temporizadorIntervalo = null;
+  if (temporizador) {
+    clearInterval(temporizador);
+    temporizador = null;
+  }
+
+  if ($("timerTexto")) {
+    $("timerTexto").innerText =
+      modo === "simulacro" ? "Tiempo: 20:00" : "Tiempo: --:--";
   }
 }
 
-function formatearTiempo(segundos) {
-  const min = Math.floor(segundos / 60);
-  const sec = segundos % 60;
-  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
+function actualizarTemporizadorTexto() {
+  const min = String(Math.floor(tiempoRestante / 60)).padStart(2, "0");
+  const seg = String(tiempoRestante % 60).padStart(2, "0");
 
-function actualizarTemporizadorVisual() {
-  const el = document.getElementById("temporizadorExamen");
-  if (el && esModoExamen && tiempoRestante !== null) {
-    el.textContent = formatearTiempo(tiempoRestante);
+  if ($("timerTexto")) {
+    $("timerTexto").innerText = `Tiempo: ${min}:${seg}`;
   }
-}
-
-/* =========================
-   PANTALLAS
-========================= */
-
-function pintarTarjetasBloques() {
-  const bloques = obtenerBloquesDisponibles();
-
-  if (!bloques.length) return "";
-
-  return `
-    <section class="card bloques-card">
-      <div class="portada-top">
-        <span class="insignia-portada">Bloques del tema</span>
-        <h3>Entrena por bloques</h3>
-        <p class="subtitulo-portada">
-          Accede a cada bloque por separado con el mismo formato de examen tipo UNED.
-        </p>
-      </div>
-
-      <div class="grid-bloques">
-        ${bloques.map((bloque) => `
-          <button class="bloque-card" data-bloque="${escaparHTML(bloque)}">
-            <span class="bloque-card-numero">${escaparHTML(bloque)}</span>
-            <span class="bloque-card-subtitulo">Examen tipo UNED</span>
-          </button>
-        `).join("")}
-      </div>
-    </section>
-  `;
-}
-
-function pantallaInicio() {
-  detenerTemporizador();
-  ESTADO_MODO_EL.textContent = "Elige un modo de estudio";
-
-  QUIZ_EL.innerHTML = `
-    <section class="card card-inicio">
-      <div class="portada-top">
-        <span class="insignia-portada">Preparación UNED</span>
-        <h2>Entrena el Tema 4 con simulador y examen realista</h2>
-        <p class="subtitulo-portada">
-          Elige cómo quieres estudiar: repaso completo, práctica aleatoria, memoria activa o simulacro de examen UNED con tiempo.
-        </p>
-      </div>
-
-      <div class="bloque-formulario">
-        <label for="nombreJugador">Tu nombre para el ranking</label>
-        <input id="nombreJugador" type="text" placeholder="Escribe tu nombre">
-      </div>
-
-      <div class="grid-modos">
-        <button id="btnTemaCompleto" class="modo-card modo-card-principal">
-          <span class="modo-icono">📘</span>
-          <span class="modo-titulo">Estudiar tema completo</span>
-          <span class="modo-texto">Recorre todas las preguntas del tema para consolidar contenidos.</span>
-        </button>
-
-        <button id="btnTemaAleatorio" class="modo-card">
-          <span class="modo-icono">🔀</span>
-          <span class="modo-titulo">Práctica aleatoria</span>
-          <span class="modo-texto">Entrena mezclando preguntas para ganar agilidad mental.</span>
-        </button>
-
-        <button id="btnMemoriaActiva" class="modo-card">
-          <span class="modo-icono">🧩</span>
-          <span class="modo-titulo">Memoria activa</span>
-          <span class="modo-texto">Practica pregunta, corrige y repite automáticamente los fallos.</span>
-        </button>
-
-        <button id="btnModoExamen" class="modo-card modo-card-examen">
-          <span class="modo-icono">🧠</span>
-          <span class="modo-titulo">Simulador de examen UNED</span>
-          <span class="modo-texto">30 preguntas aleatorias con temporizador y penalización tipo UNED.</span>
-        </button>
-
-        <button id="btnContinuar" class="modo-card">
-          <span class="modo-icono">⏯️</span>
-          <span class="modo-titulo">Continuar intento</span>
-          <span class="modo-texto">Retoma tu progreso guardado y sigue desde donde lo dejaste.</span>
-        </button>
-      </div>
-
-      <div class="acciones-secundarias">
-        <button id="btnVerRanking" class="btn-secundario">Ver ranking</button>
-      </div>
-
-      <div class="ranking-box">
-        <h3>Top actual</h3>
-        ${pintarRankingHTML()}
-      </div>
-    </section>
-
-    ${pintarTarjetasBloques()}
-  `;
-
-  document.getElementById("btnTemaCompleto").addEventListener("click", () => iniciarQuiz(false));
-  document.getElementById("btnTemaAleatorio").addEventListener("click", () => iniciarQuiz(true));
-  document.getElementById("btnMemoriaActiva").addEventListener("click", iniciarMemoriaActiva);
-  document.getElementById("btnModoExamen").addEventListener("click", iniciarModoExamen);
-  document.getElementById("btnContinuar").addEventListener("click", continuarIntento);
-  document.getElementById("btnVerRanking").addEventListener("click", pantallaRanking);
-
-  document.querySelectorAll(".bloque-card").forEach((boton) => {
-    boton.addEventListener("click", () => {
-      iniciarBloque(boton.dataset.bloque);
-    });
-  });
-
-  preguntasActuales = [];
-  respuestasUsuario = [];
-  indiceActual = 0;
-  colaRepaso = [];
-  resultadoYaGuardado = false;
-  actualizarProgreso();
-}
-
-function pantallaRanking() {
-  ESTADO_MODO_EL.textContent = "Ranking del simulador";
-
-  QUIZ_EL.innerHTML = `
-    <section class="card">
-      <h2>Ranking</h2>
-      ${pintarRankingHTML()}
-      <div class="nav-botones">
-        <button id="btnVolverInicio" class="btn-secundario">Volver al inicio</button>
-        <button id="btnBorrarRanking" class="btn-peligro">Borrar ranking</button>
-      </div>
-    </section>
-  `;
-
-  document.getElementById("btnVolverInicio").addEventListener("click", pantallaInicio);
-  document.getElementById("btnBorrarRanking").addEventListener("click", () => {
-    localStorage.removeItem(STORAGE_RANKING);
-    pantallaRanking();
-  });
-}
-
-function iniciarQuiz(aleatorio = false) {
-  const nombreInput = document.getElementById("nombreJugador");
-  nombreJugador = nombreInput ? nombreInput.value.trim() : "";
-
-  modoActual = aleatorio ? "simulador-aleatorio" : "simulador";
-  resetearEstadoModo();
-  detenerTemporizador();
-
-  preguntasActuales = aleatorio ? mezclarArray(bancoPreguntas) : [...bancoPreguntas];
-  respuestasUsuario = Array(preguntasActuales.length).fill(null);
-
-  guardarEstado();
-  renderPregunta();
-}
-
-function iniciarMemoriaActiva() {
-  const nombreInput = document.getElementById("nombreJugador");
-  nombreJugador = nombreInput ? nombreInput.value.trim() : "";
-
-  modoActual = "memoria-activa";
-  resetearEstadoModo();
-  detenerTemporizador();
-
-  preguntasActuales = mezclarArray(bancoPreguntas);
-  respuestasUsuario = Array(preguntasActuales.length).fill(null);
-
-  guardarEstado();
-  renderPregunta();
-}
-
-function repasarErrores() {
-  const preguntasFalladas = preguntasActuales.filter((pregunta, i) => {
-    const respuesta = respuestasUsuario[i];
-    return !estaRespuestaBien(pregunta, respuesta);
-  });
-
-  if (!preguntasFalladas.length) {
-    alert("No has tenido errores. ¡Perfecto!");
-    pantallaInicio();
-    return;
-  }
-
-  modoActual = "repaso-errores";
-  resetearEstadoModo();
-  detenerTemporizador();
-
-  preguntasActuales = preguntasFalladas.map((p) => ({ ...p, repeticiones: 0 }));
-  respuestasUsuario = Array(preguntasActuales.length).fill(null);
-
-  guardarEstado();
-  renderPregunta();
-}
-
-function continuarIntento() {
-  const hay = cargarEstado();
-
-  if (!hay) {
-    alert("No hay un intento guardado.");
-    return;
-  }
-
-  if (esModoExamen) {
-    iniciarTemporizador();
-  }
-
-  renderPregunta();
-}
-
-/* =========================
-   RENDER Y FEEDBACK
-========================= */
-
-function crearHTMLFeedback(item, respuestaMarcada) {
-  if (respuestaMarcada === null || typeof respuestaMarcada === "undefined") {
-    return `
-      <div class="feedback-box feedback-pendiente">
-        <strong>Selecciona una opción</strong>
-        <p>Cuando marques una respuesta aparecerá aquí si es correcta o incorrecta y el porqué.</p>
-      </div>
-    `;
-  }
-
-  const correctaIndex = obtenerIndiceCorrecto(item);
-  const esCorrecta = estaRespuestaBien(item, respuestaMarcada);
-
-  if (esCorrecta) {
-    return `
-      <div class="feedback-box feedback-correcto">
-        <strong>✅ Correcta</strong>
-        <p>${escaparHTML(item.explicacion || "Has elegido la respuesta adecuada.")}</p>
-      </div>
-    `;
-  }
-
-  const textoRespuestaCorrecta =
-    correctaIndex >= 0 && item.opciones[correctaIndex]
-      ? `${String.fromCharCode(65 + correctaIndex)}. ${escaparHTML(item.opciones[correctaIndex])}`
-      : escaparHTML(String(item.correcta));
-
-  return `
-    <div class="feedback-box feedback-incorrecto">
-      <strong>❌ Incorrecta</strong>
-      <p><strong>Respuesta correcta:</strong> ${textoRespuestaCorrecta}</p>
-      <p><strong>Por qué:</strong> ${escaparHTML(item.explicacion || "Revisa el concepto clave de esta pregunta.")}</p>
-    </div>
-  `;
-}
-
-function renderPregunta() {
-  if (!preguntasActuales.length) {
-    pantallaInicio();
-    return;
-  }
-
-  const item = preguntasActuales[indiceActual];
-  const respuestaMarcada = respuestasUsuario[indiceActual];
-  const correctaIndex = obtenerIndiceCorrecto(item);
-
-  ESTADO_MODO_EL.textContent =
-    modoActual === "examen"
-      ? "Modo examen UNED"
-      : modoActual === "memoria-activa"
-      ? "Modo memoria activa"
-      : modoActual === "repaso-errores"
-      ? "Modo repaso de errores"
-      : modoActual.startsWith("bloque-")
-      ? `Modo ${item.bloque}`
-      : modoActual === "simulador-aleatorio"
-      ? "Modo simulador aleatorio"
-      : "Modo simulador";
-
-  const aciertos = calcularAciertos();
-  const fallos = calcularFallosRespondidos();
-  const respondidas = calcularRespondidas();
-
-  QUIZ_EL.innerHTML = `
-    <section class="card card-pregunta">
-      <div class="stats-grid">
-        <div class="stat"><strong>Pregunta</strong><span>${indiceActual + 1} / ${preguntasActuales.length}</span></div>
-        <div class="stat"><strong>Respondidas</strong><span>${respondidas}</span></div>
-        <div class="stat"><strong>Aciertos</strong><span>${aciertos}</span></div>
-        <div class="stat"><strong>Fallos</strong><span>${fallos}</span></div>
-      </div>
-
-      ${esModoExamen ? `
-        <div class="temporizador-box">
-          <strong>Tiempo restante:</strong>
-          <span id="temporizadorExamen">${formatearTiempo(tiempoRestante)}</span>
-        </div>
-      ` : ""}
-
-      <div class="bloque-info">
-        <span class="bloque-etiqueta">${escaparHTML(item.bloque || "Bloque")}</span>
-      </div>
-
-      <h2 class="pregunta-titulo">${escaparHTML(item.pregunta)}</h2>
-
-      <div class="opciones">
-        ${item.opciones.map((opcion, i) => {
-          const seleccionada = respuestaMarcada === i;
-          const yaRespondida = respuestaMarcada !== null && typeof respuestaMarcada !== "undefined";
-
-          let clases = "opcion";
-          if (seleccionada) clases += " seleccionada";
-
-          if (yaRespondida && i === correctaIndex) clases += " opcion-correcta";
-          if (yaRespondida && seleccionada && i !== correctaIndex) clases += " opcion-incorrecta";
-
-          return `
-            <label class="${clases}">
-              <input type="radio" name="respuesta" value="${i}" ${seleccionada ? "checked" : ""}>
-              <span>${String.fromCharCode(65 + i)}. ${escaparHTML(opcion)}</span>
-            </label>
-          `;
-        }).join("")}
-      </div>
-
-      <div class="feedback-wrap">
-        ${crearHTMLFeedback(item, respuestaMarcada)}
-      </div>
-
-      <div class="nav-botones">
-        <button id="btnVolverInicioDirecto" class="btn-secundario">⌂ Inicio</button>
-        <button id="btnReiniciarIntento" class="btn-secundario">↻ Reiniciar</button>
-        <button id="btnAnterior" class="btn-secundario" ${indiceActual === 0 ? "disabled" : ""}>← Anterior</button>
-        <button id="btnGuardar" class="btn-secundario">Guardar respuesta</button>
-        <button id="btnSiguiente" class="btn-principal">${indiceActual === preguntasActuales.length - 1 && !colaRepaso.length ? "Finalizar" : "Siguiente →"}</button>
-      </div>
-    </section>
-  `;
-
-  document.querySelectorAll('input[name="respuesta"]').forEach((input) => {
-    input.addEventListener("change", (e) => {
-      const respuestaElegida = Number(e.target.value);
-      respuestasUsuario[indiceActual] = respuestaElegida;
-
-      gestionarRepeticionInteligente(item, respuestaElegida);
-
-      guardarEstado();
-      actualizarProgreso();
-      renderPregunta();
-    });
-  });
-
-  document.getElementById("btnVolverInicioDirecto").addEventListener("click", () => {
-    pantallaInicio();
-  });
-
-  document.getElementById("btnReiniciarIntento").addEventListener("click", () => {
-    reiniciarIntentoActual();
-  });
-
-  document.getElementById("btnAnterior").addEventListener("click", () => {
-    if (indiceActual > 0) {
-      indiceActual--;
-      guardarEstado();
-      renderPregunta();
-    }
-  });
-
-  document.getElementById("btnGuardar").addEventListener("click", () => {
-    guardarEstado();
-    actualizarProgreso();
-    alert("Respuesta guardada.");
-  });
-
-  document.getElementById("btnSiguiente").addEventListener("click", () => {
-    if (indiceActual < preguntasActuales.length - 1) {
-      indiceActual++;
-      guardarEstado();
-      renderPregunta();
-    } else if (colaRepaso.length) {
-      preguntasActuales = preguntasActuales.concat(colaRepaso);
-      respuestasUsuario = respuestasUsuario.concat(Array(colaRepaso.length).fill(null));
-      colaRepaso = [];
-      indiceActual++;
-      guardarEstado();
-      renderPregunta();
-    } else {
-      pantallaResultados();
-    }
-  });
-
-  actualizarProgreso();
-  actualizarTemporizadorVisual();
-}
-
-function reiniciarIntentoActual() {
-  if (!preguntasActuales.length) {
-    pantallaInicio();
-    return;
-  }
-
-  if (modoActual === "examen") {
-    preguntasActuales = mezclarArray(bancoPreguntas).slice(0, 30);
-    respuestasUsuario = Array(preguntasActuales.length).fill(null);
-    indiceActual = 0;
-    tiempoRestante = 30 * 60;
-    esModoExamen = true;
-    colaRepaso = [];
-    resultadoYaGuardado = false;
-    guardarEstado();
-    iniciarTemporizador();
-    renderPregunta();
-    return;
-  }
-
-  if (modoActual.startsWith("bloque-")) {
-    const nombreBloque = modoActual.replace("bloque-", "");
-    const preguntasDelBloque = bancoPreguntas.filter(
-      (pregunta) => pregunta.bloque === nombreBloque
-    );
-
-    preguntasActuales = [...preguntasDelBloque];
-    respuestasUsuario = Array(preguntasActuales.length).fill(null);
-    indiceActual = 0;
-    tiempoRestante = null;
-    esModoExamen = false;
-    colaRepaso = [];
-    resultadoYaGuardado = false;
-    detenerTemporizador();
-    guardarEstado();
-    renderPregunta();
-    return;
-  }
-
-  if (modoActual === "memoria-activa") {
-    preguntasActuales = mezclarArray(bancoPreguntas);
-  } else if (modoActual === "repaso-errores") {
-    preguntasActuales = preguntasActuales.map((p) => ({ ...p, repeticiones: 0 }));
-  } else if (modoActual === "simulador-aleatorio") {
-    preguntasActuales = mezclarArray(bancoPreguntas);
-  } else {
-    preguntasActuales = [...bancoPreguntas];
-  }
-
-  respuestasUsuario = Array(preguntasActuales.length).fill(null);
-  indiceActual = 0;
-  tiempoRestante = null;
-  esModoExamen = false;
-  colaRepaso = [];
-  resultadoYaGuardado = false;
-  detenerTemporizador();
-  guardarEstado();
-  renderPregunta();
-}
-
-function mostrarRevision() {
-  if (!preguntasActuales.length) {
-    pantallaInicio();
-    return;
-  }
-
-  ESTADO_MODO_EL.textContent = "Revisión del intento";
-
-  QUIZ_EL.innerHTML = `
-    <section class="card">
-      <h2>Revisión del intento</h2>
-
-      <div class="revision-lista">
-        ${preguntasActuales.map((pregunta, i) => {
-          const respuestaUsuarioActual = respuestasUsuario[i];
-          const correctaIndex = obtenerIndiceCorrecto(pregunta);
-          const respondida = respuestaUsuarioActual !== null && typeof respuestaUsuarioActual !== "undefined";
-          const acertada = respondida ? estaRespuestaBien(pregunta, respuestaUsuarioActual) : false;
-
-          const textoUsuario = respondida && pregunta.opciones[respuestaUsuarioActual]
-            ? `${String.fromCharCode(65 + respuestaUsuarioActual)}. ${escaparHTML(pregunta.opciones[respuestaUsuarioActual])}`
-            : "No respondida";
-
-          const textoCorrecta = correctaIndex >= 0 && pregunta.opciones[correctaIndex]
-            ? `${String.fromCharCode(65 + correctaIndex)}. ${escaparHTML(pregunta.opciones[correctaIndex])}`
-            : escaparHTML(String(pregunta.correcta));
-
-          return `
-            <article class="revision-item ${acertada ? "revision-ok" : "revision-ko"}">
-              <div class="revision-top">
-                <span class="bloque-etiqueta">${escaparHTML(pregunta.bloque || "Bloque")}</span>
-                <span class="revision-estado">${acertada ? "✅ Correcta" : respondida ? "❌ Incorrecta" : "⏳ Sin responder"}</span>
-              </div>
-
-              <h3>${i + 1}. ${escaparHTML(pregunta.pregunta)}</h3>
-              <p><strong>Tu respuesta:</strong> ${textoUsuario}</p>
-              <p><strong>Respuesta correcta:</strong> ${textoCorrecta}</p>
-              <p><strong>Explicación:</strong> ${escaparHTML(pregunta.explicacion || "Sin explicación disponible.")}</p>
-            </article>
-          `;
-        }).join("")}
-      </div>
-
-      <div class="nav-botones">
-        <button id="btnVolverResultados" class="btn-secundario">Volver a resultados</button>
-        <button id="btnVolverInicioRevision" class="btn-principal">Volver al inicio</button>
-      </div>
-    </section>
-  `;
-
-  document.getElementById("btnVolverResultados").addEventListener("click", pantallaResultados);
-  document.getElementById("btnVolverInicioRevision").addEventListener("click", pantallaInicio);
-
-  actualizarProgresoFinal();
-}
-
-function pantallaResultados() {
-  detenerTemporizador();
-
-  const aciertos = calcularAciertos();
-  const total = preguntasActuales.length;
-  const fallos = total - aciertos;
-  const nota = calcularNotaSobre10();
-
-  if (!resultadoYaGuardado) {
-    guardarEnRanking(nombreJugador || "Jugador", nota, aciertos, total);
-    resultadoYaGuardado = true;
-  }
-
-  esModoExamen = false;
-  tiempoRestante = null;
-  borrarEstado();
-
-  ESTADO_MODO_EL.textContent = "Resultado final";
-
-  QUIZ_EL.innerHTML = `
-    <section class="card card-resultado">
-      <h2>Resultado final</h2>
-
-      <div class="stats-grid">
-        <div class="stat"><strong>Aciertos</strong><span>${aciertos}</span></div>
-        <div class="stat"><strong>Fallos</strong><span>${fallos}</span></div>
-        <div class="stat"><strong>Total</strong><span>${total}</span></div>
-        <div class="stat"><strong>Nota</strong><span>${nota.toFixed(2)} / 10</span></div>
-      </div>
-
-      <div class="ranking-box">
-        <h3>Ranking</h3>
-        ${pintarRankingHTML()}
-      </div>
-
-      <div class="nav-botones">
-        <button id="btnRepetir" class="btn-principal">Hacer otro intento</button>
-        <button id="btnRepasarErrores" class="btn-principal">Repasar errores</button>
-        <button id="btnMostrarRevision" class="btn-secundario">Revisar respuestas</button>
-        <button id="btnIrRanking" class="btn-secundario">Ver ranking</button>
-        <button id="btnVolverInicioResultados" class="btn-secundario">Volver al inicio</button>
-      </div>
-    </section>
-  `;
-
-  document.getElementById("btnRepetir").addEventListener("click", pantallaInicio);
-  document.getElementById("btnRepasarErrores").addEventListener("click", repasarErrores);
-  document.getElementById("btnMostrarRevision").addEventListener("click", mostrarRevision);
-  document.getElementById("btnIrRanking").addEventListener("click", pantallaRanking);
-  document.getElementById("btnVolverInicioResultados").addEventListener("click", pantallaInicio);
-
-  actualizarProgresoFinal();
 }
 
 /* =========================
    INICIO
 ========================= */
 
-function iniciarApp() {
-  bancoPreguntas = recogerPreguntasDelWindow();
+function iniciar() {
+  inicializarSelectorBloques();
 
-  if (!bancoPreguntas.length) {
-    QUIZ_EL.innerHTML = `
-      <section class="card">
-        <h2>No se han detectado preguntas</h2>
-        <p>Revisa cómo están definidos tus archivos <code>preguntas_bloqueX.js</code>.</p>
-        <p>Cada bloque debería contener un array de objetos parecido a este:</p>
-        <pre>const preguntasBloque1 = [
-  {
-    pregunta: "¿Texto?",
-    opciones: ["A", "B", "C", "D"],
-    correcta: 1,
-    explicacion: "Motivo de la respuesta"
-  }
-];</pre>
-      </section>
-    `;
+  const restaurado = cargarEstado();
+
+  if (restaurado && preguntasActuales.length > 0) {
+    inicializarSelectorBloques();
+    actualizarStats();
+    actualizarNivel();
+    actualizarModoTexto();
+
+    if ($("totalPreguntas")) {
+      $("totalPreguntas").innerText = preguntasActuales.length;
+    }
+
+    if (modo === "simulacro" && tiempoRestante > 0) {
+      iniciarTemporizador();
+    } else {
+      actualizarTemporizadorTexto();
+    }
+
+    mostrarPregunta();
     return;
   }
 
-  pantallaInicio();
-  actualizarProgreso();
+  cargarBloque(1);
+  actualizarNivel();
 }
 
-document.addEventListener("DOMContentLoaded", iniciarApp);
+iniciar();

@@ -1,4 +1,4 @@
-const preguntasBloque10 = [
+window.preguntasBloque10 = [
   {
     pregunta: "Según la introducción del tema, uno de los argumentos más sólidos en defensa de la automaticidad del procesamiento emocional es:",
     opciones: [

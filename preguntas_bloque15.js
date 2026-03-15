@@ -1,4 +1,4 @@
-const preguntasBloque15 = [
+window.preguntasBloque15 = [
   {
     pregunta: "Según la introducción del tema, ¿en qué punto discrepan las posturas sobre la importancia de los procesos cognitivos en la emoción?",
     opciones: [

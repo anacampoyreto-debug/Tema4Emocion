@@ -1,4 +1,4 @@
-const preguntasBloque19 = [
+window.preguntasBloque19 = [
   {
     pregunta: "Según la introducción, la distinción tradicional entre procesos cognitivos y emocionales asociaba estos últimos a:",
     opciones: [

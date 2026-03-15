@@ -1,6 +1,5 @@
 
 
-
 const QUIZ_EL = document.getElementById("quiz");
 const ESTADO_MODO_EL = document.getElementById("estadoModo");
 const PROGRESO_TEXTO_EL = document.getElementById("progresoTexto");
@@ -18,6 +17,10 @@ let nombreJugador = "";
 let temporizadorIntervalo = null;
 let tiempoRestante = null;
 let esModoExamen = false;
+
+/* =========================
+   UTILIDADES
+========================= */
 
 function mezclarArray(array) {
   const copia = [...array];
@@ -62,7 +65,8 @@ function normalizarPregunta(item, origen = "General") {
     bloque: item.bloque || origen,
     pregunta: obtenerTextoPregunta(item),
     opciones: obtenerOpciones(item),
-    correcta: obtenerRespuestaCorrecta(item)
+    correcta: obtenerRespuestaCorrecta(item),
+    explicacion: item.explicacion || ""
   };
 }
 
@@ -77,46 +81,68 @@ function esArrayDePreguntas(valor) {
   );
 }
 
+/* =========================
+   CARGA DE BLOQUES
+========================= */
+
 function recogerPreguntasDelWindow() {
-  const candidatos = [];
-
-  for (const clave of Object.keys(window)) {
-    try {
-      const valor = window[clave];
-      if (esArrayDePreguntas(valor)) {
-        candidatos.push({ nombre: clave, datos: valor });
-      }
-    } catch (e) {}
-  }
-
-  const vistos = new Set();
-  const arraysUnicos = candidatos.filter((c) => {
-    if (vistos.has(c.datos)) return false;
-    vistos.add(c.datos);
-    return true;
-  });
+  const bloquesDetectados = [
+    typeof preguntasBloque1 !== "undefined" ? { nombre: "Bloque 1", datos: preguntasBloque1 } : null,
+    typeof preguntasBloque2 !== "undefined" ? { nombre: "Bloque 2", datos: preguntasBloque2 } : null,
+    typeof preguntasBloque3 !== "undefined" ? { nombre: "Bloque 3", datos: preguntasBloque3 } : null,
+    typeof preguntasBloque4 !== "undefined" ? { nombre: "Bloque 4", datos: preguntasBloque4 } : null,
+    typeof preguntasBloque5 !== "undefined" ? { nombre: "Bloque 5", datos: preguntasBloque5 } : null,
+    typeof preguntasBloque6 !== "undefined" ? { nombre: "Bloque 6", datos: preguntasBloque6 } : null,
+    typeof preguntasBloque7 !== "undefined" ? { nombre: "Bloque 7", datos: preguntasBloque7 } : null,
+    typeof preguntasBloque8 !== "undefined" ? { nombre: "Bloque 8", datos: preguntasBloque8 } : null,
+    typeof preguntasBloque9 !== "undefined" ? { nombre: "Bloque 9", datos: preguntasBloque9 } : null,
+    typeof preguntasBloque10 !== "undefined" ? { nombre: "Bloque 10", datos: preguntasBloque10 } : null,
+    typeof preguntasBloque11 !== "undefined" ? { nombre: "Bloque 11", datos: preguntasBloque11 } : null,
+    typeof preguntasBloque12 !== "undefined" ? { nombre: "Bloque 12", datos: preguntasBloque12 } : null,
+    typeof preguntasBloque13 !== "undefined" ? { nombre: "Bloque 13", datos: preguntasBloque13 } : null,
+    typeof preguntasBloque14 !== "undefined" ? { nombre: "Bloque 14", datos: preguntasBloque14 } : null,
+    typeof preguntasBloque15 !== "undefined" ? { nombre: "Bloque 15", datos: preguntasBloque15 } : null,
+    typeof preguntasBloque16 !== "undefined" ? { nombre: "Bloque 16", datos: preguntasBloque16 } : null,
+    typeof preguntasBloque17 !== "undefined" ? { nombre: "Bloque 17", datos: preguntasBloque17 } : null,
+    typeof preguntasBloque18 !== "undefined" ? { nombre: "Bloque 18", datos: preguntasBloque18 } : null,
+    typeof preguntasBloque19 !== "undefined" ? { nombre: "Bloque 19", datos: preguntasBloque19 } : null,
+    typeof preguntasBloque20 !== "undefined" ? { nombre: "Bloque 20", datos: preguntasBloque20 } : null
+  ].filter(Boolean);
 
   let todas = [];
-  arraysUnicos.forEach((entrada, i) => {
-    const nombreBloque = entrada.nombre || `Bloque ${i + 1}`;
-    todas = todas.concat(entrada.datos.map((p) => normalizarPregunta(p, nombreBloque)));
+
+  bloquesDetectados.forEach((entrada) => {
+    if (esArrayDePreguntas(entrada.datos)) {
+      todas = todas.concat(
+        entrada.datos.map((pregunta) => normalizarPregunta(pregunta, entrada.nombre))
+      );
+    }
   });
 
   return todas;
 }
 
+/* =========================
+   CÁLCULOS
+========================= */
+
 function calcularAciertos() {
   let aciertos = 0;
+
   preguntasActuales.forEach((pregunta, i) => {
     const respuesta = respuestasUsuario[i];
     if (respuesta === null || typeof respuesta === "undefined") return;
+
     if (typeof pregunta.correcta === "number") {
       if (respuesta === pregunta.correcta) aciertos++;
     } else {
       const opcionTexto = pregunta.opciones[respuesta];
-      if (String(opcionTexto).trim() === String(pregunta.correcta).trim()) aciertos++;
+      if (String(opcionTexto).trim() === String(pregunta.correcta).trim()) {
+        aciertos++;
+      }
     }
   });
+
   return aciertos;
 }
 
@@ -132,6 +158,10 @@ function calcularNotaSobre10() {
   if (!preguntasActuales.length) return 0;
   return (calcularAciertos() / preguntasActuales.length) * 10;
 }
+
+/* =========================
+   ESTADO Y STORAGE
+========================= */
 
 function guardarEstado() {
   localStorage.setItem(
@@ -186,6 +216,7 @@ function obtenerRanking() {
 
 function guardarEnRanking(nombre, nota, aciertos, total) {
   const ranking = obtenerRanking();
+
   ranking.push({
     nombre: nombre || "Jugador",
     nota: Number(nota.toFixed(2)),
@@ -204,6 +235,7 @@ function guardarEnRanking(nombre, nota, aciertos, total) {
 
 function pintarRankingHTML() {
   const ranking = obtenerRanking();
+
   if (!ranking.length) {
     return `<p class="sin-ranking">Aún no hay resultados guardados.</p>`;
   }
@@ -222,12 +254,19 @@ function pintarRankingHTML() {
   `;
 }
 
+/* =========================
+   PROGRESO
+========================= */
+
 function actualizarProgreso() {
   const total = preguntasActuales.length || 0;
   const respondidas = calcularRespondidas();
   const porcentaje = total ? Math.round((respondidas / total) * 100) : 0;
 
-  PROGRESO_TEXTO_EL.textContent = total ? `${respondidas} de ${total} respondidas` : "Sin iniciar";
+  PROGRESO_TEXTO_EL.textContent = total
+    ? `${respondidas} de ${total} respondidas`
+    : "Sin iniciar";
+
   BARRA_PROGRESO_EL.style.width = `${porcentaje}%`;
 }
 
@@ -235,6 +274,10 @@ function actualizarProgresoFinal() {
   PROGRESO_TEXTO_EL.textContent = "Examen completado";
   BARRA_PROGRESO_EL.style.width = "100%";
 }
+
+/* =========================
+   TEMPORIZADOR
+========================= */
 
 function iniciarModoExamen() {
   const nombreInput = document.getElementById("nombreJugador");
@@ -254,6 +297,7 @@ function iniciarModoExamen() {
 
 function iniciarTemporizador() {
   detenerTemporizador();
+
   if (!esModoExamen || tiempoRestante === null) return;
 
   temporizadorIntervalo = setInterval(() => {
@@ -292,6 +336,10 @@ function actualizarTemporizadorVisual() {
     el.textContent = formatearTiempo(tiempoRestante);
   }
 }
+
+/* =========================
+   PANTALLAS
+========================= */
 
 function pantallaInicio() {
   ESTADO_MODO_EL.textContent = "Elige un modo de estudio";
@@ -368,12 +416,16 @@ function iniciarQuiz(aleatorio = false) {
 
 function continuarIntento() {
   const hay = cargarEstado();
+
   if (!hay) {
     alert("No hay un intento guardado.");
     return;
   }
 
-  if (esModoExamen) iniciarTemporizador();
+  if (esModoExamen) {
+    iniciarTemporizador();
+  }
+
   renderPregunta();
 }
 
@@ -515,6 +567,10 @@ function pantallaResultados() {
 
   actualizarProgresoFinal();
 }
+
+/* =========================
+   INICIO
+========================= */
 
 function iniciarApp() {
   bancoPreguntas = recogerPreguntasDelWindow();

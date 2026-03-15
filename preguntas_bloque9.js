@@ -1,4 +1,4 @@
-const preguntasBloque9 = [
+window.preguntasBloque9 = [
   {
     pregunta: "Los procesos cognitivos se definen fundamentalmente por permitir el conocimiento del mundo y la experiencia:",
     opciones: [

@@ -1,4 +1,4 @@
-{
+{window.preguntasBloqueextra = [
 titulo: "Bloque Refuerzo · Psicología de la emoción (101-200)",
 preguntas: [
 

@@ -1,4 +1,4 @@
-const preguntasBloque5 = [
+window.preguntasBloque5 = [
   {
     pregunta: "¿Qué autor afirmaba: “Soy un psicólogo cognitivo y los efectos emocionales que he encontrado se pueden explicar en términos de ideas”?",
     opciones: [

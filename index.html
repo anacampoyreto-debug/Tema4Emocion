@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tema 4 · Emoción y Procesamiento Cognitivo</title>
-
-  <meta name="description" content="Web de estudio del Tema 4 de Emoción y Procesamiento Cognitivo con bloques, simulador de examen UNED, ranking, mapa mental y podcast.">
+  <meta name="description" content="Entrenamiento por bloques y simulacro UNED del Tema 4 de Emoción y Procesamiento Cognitivo.">
   <meta name="theme-color" content="#1e3a8a">
-
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,15 +16,15 @@
       <div class="hero-texto">
         <h1>Tema 4 · Emoción y Procesamiento Cognitivo</h1>
         <p>
-          Web de estudio estilo estratega · entrenamiento · simulador examen UNED · ranking
+          Entrenamiento por bloques · simulacro UNED · XP · nivel · progreso
         </p>
-        <span id="estadoModo" class="estado-modo" aria-live="polite">
-          Elige un modo de estudio
+        <span id="estadoModo" class="estado-modo">
+          Preparando entorno de estudio
         </span>
       </div>
     </header>
 
-    <section class="recursos" aria-label="Recursos del tema">
+    <section class="recursos">
       <div class="recurso">
         <h3>Mapa mental</h3>
         <img
@@ -41,7 +39,7 @@
       <div class="recurso podcast-card">
         <h3>Podcast del tema</h3>
         <p class="podcast-texto">
-          Escucha el resumen del tema mientras entrenas las preguntas tipo test.
+          Escucha el resumen del tema mientras entrenas las preguntas.
         </p>
 
         <a
@@ -49,40 +47,97 @@
           href="https://drive.google.com/file/d/1jv1J8Jccrkd4eNnbp1xg5XZted2XN8xB/view?usp=sharing"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Abrir podcast del tema en una nueva pestaña"
         >
-          🎧 Escuchar podcast mientras hago el test
+          🎧 Escuchar podcast
         </a>
       </div>
     </section>
 
-    <section class="progreso-box" aria-label="Progreso del estudio">
-      <div class="progreso-top">
-        <span>Progreso</span>
-        <span id="progresoTexto">Sin iniciar</span>
-      </div>
-
-      <div
-        class="barra-contenedor"
-        role="progressbar"
-        aria-label="Barra de progreso"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow="0"
-      >
-        <div id="barraProgreso" class="barra"></div>
+    <section class="card">
+      <div class="stats-grid">
+        <div class="stat">
+          <strong>Modo</strong>
+          <span id="modoActual">Modo: entrenamiento</span>
+        </div>
+        <div class="stat">
+          <strong>Nivel</strong>
+          <span id="nivelTexto">Apertura estratégica</span>
+        </div>
+        <div class="stat">
+          <strong>Tiempo</strong>
+          <span id="timerTexto">Tiempo: --:--</span>
+        </div>
+        <div class="stat">
+          <strong>Total del bloque</strong>
+          <span id="totalPreguntas">0</span>
+        </div>
       </div>
     </section>
 
-    <!-- AQUÍ SE CARGA TODO EL QUIZ -->
-    <main id="quiz" aria-live="polite"></main>
+    <section class="card">
+      <div class="bloque-formulario">
+        <label for="selectorBloque">Selecciona bloque</label>
+        <select id="selectorBloque" onchange="cambiarBloque()"></select>
+      </div>
 
-    <noscript>
-      <section class="card">
-        <h2>JavaScript es necesario</h2>
-        <p>Esta aplicación necesita JavaScript activado para mostrar preguntas, bloques, ranking y progreso.</p>
-      </section>
-    </noscript>
+      <div class="nav-botones">
+        <button class="btn-secundario" onclick="cambiarBloque()">Cargar bloque</button>
+        <button class="btn-principal" onclick="iniciarSimulacro()">Iniciar simulacro</button>
+        <button class="btn-peligro" onclick="reiniciarSesion()">Reiniciar sesión</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="stats-grid">
+        <div class="stat">
+          <strong>Correctas</strong>
+          <span id="correctas">0</span>
+        </div>
+        <div class="stat">
+          <strong>Respondidas</strong>
+          <span id="respondidasTexto">0</span>
+        </div>
+        <div class="stat">
+          <strong>Fallos</strong>
+          <span id="fallosTexto">0</span>
+        </div>
+        <div class="stat">
+          <strong>XP</strong>
+          <span id="xpTexto">0</span>
+        </div>
+        <div class="stat">
+          <strong>Simulacros</strong>
+          <span id="simulacrosTexto">0</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="progreso-box">
+      <div class="progreso-top">
+        <span>Progreso</span>
+        <span id="porcentajeTexto">0% completado</span>
+      </div>
+
+      <div class="barra-contenedor">
+        <div id="progreso" class="barra"></div>
+      </div>
+    </section>
+
+    <section class="card card-pregunta">
+      <div class="bloque-info">
+        <span class="bloque-etiqueta">Pregunta <span id="numeroPregunta">1</span></span>
+      </div>
+
+      <h2 id="pregunta" class="pregunta-titulo">Cargando pregunta...</h2>
+
+      <div id="opciones" class="opciones"></div>
+
+      <div id="feedback" class="feedback oculto"></div>
+
+      <div class="nav-botones">
+        <button class="btn-principal" onclick="siguientePregunta()">Siguiente</button>
+      </div>
+    </section>
 
   </div>
 

@@ -1,4 +1,4 @@
-const preguntasBloque14 = [
+window.preguntasBloque14 = [
   {
     pregunta: "Según Lazarus (1991), el verdadero interés de la psicología de la emoción es poder distinguir qué parte del procesamiento emocional es:",
     opciones: [

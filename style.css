@@ -316,6 +316,16 @@ body {
   filter: none;
 }
 
+.btn-principal:focus-visible,
+.btn-secundario:focus-visible,
+.btn-peligro:focus-visible,
+.bloque-card:focus-visible,
+.modo-card:focus-visible,
+.boton-podcast:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.35);
+  outline-offset: 3px;
+}
+
 /* STATS */
 
 .stats-grid {
@@ -403,6 +413,7 @@ body {
 
 .opcion {
   display: block;
+  position: relative;
   border: 2px solid #e2e8f0;
   border-radius: 16px;
   padding: 14px;
@@ -418,11 +429,15 @@ body {
 }
 
 .opcion input {
-  margin-right: 10px;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .opcion span {
+  display: block;
   line-height: 1.5;
+  padding-left: 0;
 }
 
 .opcion.seleccionada {
@@ -630,6 +645,55 @@ body {
   opacity: 0.92;
 }
 
+/* REVISIÓN */
+
+.revision-lista {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.revision-item {
+  border-radius: 18px;
+  padding: 18px;
+  border: 1px solid #dbeafe;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.revision-ok {
+  border-color: #93d5a5;
+  background: #f0fbf3;
+}
+
+.revision-ko {
+  border-color: #e4a2a2;
+  background: #fff5f5;
+}
+
+.revision-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.revision-estado {
+  font-weight: 800;
+  color: #334155;
+}
+
+.revision-item h3 {
+  margin: 10px 0 12px 0;
+  line-height: 1.45;
+}
+
+.revision-item p {
+  margin: 8px 0;
+  line-height: 1.55;
+}
+
 /* CODIGO */
 
 pre {
@@ -693,8 +757,17 @@ pre {
   }
 
   .progreso-top,
-  .temporizador-box {
+  .temporizador-box,
+  .revision-top {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .pregunta-titulo {
+    font-size: 1.05rem;
   }
 }

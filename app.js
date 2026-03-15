@@ -1,5 +1,4 @@
 
-
 const QUIZ_EL = document.getElementById("quiz");
 const ESTADO_MODO_EL = document.getElementById("estadoModo");
 const PROGRESO_TEXTO_EL = document.getElementById("progresoTexto");
@@ -263,9 +262,8 @@ function actualizarProgreso() {
   const respondidas = calcularRespondidas();
   const porcentaje = total ? Math.round((respondidas / total) * 100) : 0;
 
-  PROGRESO_TEXTO_EL.textContent = total
-    ? `${respondidas} de ${total} respondidas`
-    : "Sin iniciar";
+  PROGRESO_TEXTO_EL.textContent =
+    total ? `${respondidas} de ${total} respondidas` : "Sin iniciar";
 
   BARRA_PROGRESO_EL.style.width = `${porcentaje}%`;
 }
@@ -346,19 +344,46 @@ function pantallaInicio() {
 
   QUIZ_EL.innerHTML = `
     <section class="card card-inicio">
-      <h2>Simulador de examen</h2>
-      <p>Ahora puedes avanzar, volver atrás, guardar respuestas, ver aciertos y entrar en ranking.</p>
+      <div class="portada-top">
+        <span class="insignia-portada">Preparación UNED</span>
+        <h2>Entrena el Tema 4 con simulador y examen realista</h2>
+        <p class="subtitulo-portada">
+          Elige cómo quieres estudiar: repaso completo, práctica aleatoria o simulacro de examen UNED con tiempo.
+        </p>
+      </div>
 
       <div class="bloque-formulario">
         <label for="nombreJugador">Tu nombre para el ranking</label>
         <input id="nombreJugador" type="text" placeholder="Escribe tu nombre">
       </div>
 
-      <div class="acciones-modos">
-        <button id="btnTemaCompleto" class="btn-principal">Empezar tema completo</button>
-        <button id="btnTemaAleatorio" class="btn-secundario">Tema completo aleatorio</button>
-        <button id="btnModoExamen" class="btn-secundario">Modo examen UNED (30 preguntas)</button>
-        <button id="btnContinuar" class="btn-secundario">Continuar intento guardado</button>
+      <div class="grid-modos">
+        <button id="btnTemaCompleto" class="modo-card modo-card-principal">
+          <span class="modo-icono">📘</span>
+          <span class="modo-titulo">Estudiar tema completo</span>
+          <span class="modo-texto">Recorre todas las preguntas del tema para consolidar contenidos.</span>
+        </button>
+
+        <button id="btnTemaAleatorio" class="modo-card">
+          <span class="modo-icono">🔀</span>
+          <span class="modo-titulo">Práctica aleatoria</span>
+          <span class="modo-texto">Entrena mezclando preguntas para ganar agilidad mental.</span>
+        </button>
+
+        <button id="btnModoExamen" class="modo-card modo-card-examen">
+          <span class="modo-icono">🧠</span>
+          <span class="modo-titulo">Simulador de examen UNED</span>
+          <span class="modo-texto">30 preguntas aleatorias con temporizador para entrenar como en examen.</span>
+        </button>
+
+        <button id="btnContinuar" class="modo-card">
+          <span class="modo-icono">⏯️</span>
+          <span class="modo-titulo">Continuar intento</span>
+          <span class="modo-texto">Retoma tu progreso guardado y sigue desde donde lo dejaste.</span>
+        </button>
+      </div>
+
+      <div class="acciones-secundarias">
         <button id="btnVerRanking" class="btn-secundario">Ver ranking</button>
       </div>
 

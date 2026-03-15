@@ -1,4 +1,4 @@
-const preguntasBloque3 = [
+window.preguntasBloque3 = [
   {
     pregunta: "El procesamiento automático o 'abajo-arriba' se caracteriza, según el texto, por ser:",
     opciones: [

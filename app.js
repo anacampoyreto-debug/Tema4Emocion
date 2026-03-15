@@ -1,4 +1,3 @@
-
 const QUIZ_EL = document.getElementById("quiz");
 const ESTADO_MODO_EL = document.getElementById("estadoModo");
 const PROGRESO_TEXTO_EL = document.getElementById("progresoTexto");
@@ -78,6 +77,16 @@ function esArrayDePreguntas(valor) {
     ("pregunta" in ejemplo || "enunciado" in ejemplo || "texto" in ejemplo || "question" in ejemplo) &&
     ("opciones" in ejemplo || "respuestas" in ejemplo || "options" in ejemplo)
   );
+}
+
+function obtenerNumeroDeBloque(nombreBloque) {
+  const match = String(nombreBloque).match(/\d+/);
+  return match ? Number(match[0]) : 999;
+}
+
+function obtenerBloquesDisponibles() {
+  const unicos = [...new Set(bancoPreguntas.map((p) => p.bloque))];
+  return unicos.sort((a, b) => obtenerNumeroDeBloque(a) - obtenerNumeroDeBloque(b));
 }
 
 /* =========================
@@ -293,6 +302,27 @@ function iniciarModoExamen() {
   renderPregunta();
 }
 
+function iniciarBloque(nombreBloque) {
+  const nombreInput = document.getElementById("nombreJugador");
+  nombreJugador = nombreInput ? nombreInput.value.trim() : "";
+
+  const preguntasDelBloque = bancoPreguntas.filter(
+    (pregunta) => pregunta.bloque === nombreBloque
+  );
+
+  modoActual = `bloque-${nombreBloque}`;
+  esModoExamen = false;
+  tiempoRestante = null;
+  detenerTemporizador();
+
+  preguntasActuales = [...preguntasDelBloque];
+  indiceActual = 0;
+  respuestasUsuario = Array(preguntasActuales.length).fill(null);
+
+  guardarEstado();
+  renderPregunta();
+}
+
 function iniciarTemporizador() {
   detenerTemporizador();
 
@@ -338,6 +368,33 @@ function actualizarTemporizadorVisual() {
 /* =========================
    PANTALLAS
 ========================= */
+
+function pintarTarjetasBloques() {
+  const bloques = obtenerBloquesDisponibles();
+
+  if (!bloques.length) return "";
+
+  return `
+    <section class="card bloques-card">
+      <div class="portada-top">
+        <span class="insignia-portada">Bloques del tema</span>
+        <h3>Entrena por bloques</h3>
+        <p class="subtitulo-portada">
+          Accede a cada bloque por separado con el mismo formato de examen tipo UNED.
+        </p>
+      </div>
+
+      <div class="grid-bloques">
+        ${bloques.map((bloque) => `
+          <button class="bloque-card" data-bloque="${escaparHTML(bloque)}">
+            <span class="bloque-card-numero">${escaparHTML(bloque)}</span>
+            <span class="bloque-card-subtitulo">Examen tipo UNED</span>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
 
 function pantallaInicio() {
   ESTADO_MODO_EL.textContent = "Elige un modo de estudio";
@@ -392,6 +449,8 @@ function pantallaInicio() {
         ${pintarRankingHTML()}
       </div>
     </section>
+
+    ${pintarTarjetasBloques()}
   `;
 
   document.getElementById("btnTemaCompleto").addEventListener("click", () => iniciarQuiz(false));
@@ -399,6 +458,12 @@ function pantallaInicio() {
   document.getElementById("btnModoExamen").addEventListener("click", iniciarModoExamen);
   document.getElementById("btnContinuar").addEventListener("click", continuarIntento);
   document.getElementById("btnVerRanking").addEventListener("click", pantallaRanking);
+
+  document.querySelectorAll(".bloque-card").forEach((boton) => {
+    boton.addEventListener("click", () => {
+      iniciarBloque(boton.dataset.bloque);
+    });
+  });
 }
 
 function pantallaRanking() {
@@ -466,6 +531,8 @@ function renderPregunta() {
   ESTADO_MODO_EL.textContent =
     modoActual === "examen"
       ? "Modo examen UNED"
+      : modoActual.startsWith("bloque-")
+      ? `Modo ${item.bloque}`
       : modoActual === "simulador-aleatorio"
       ? "Modo simulador aleatorio"
       : "Modo simulador";

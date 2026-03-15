@@ -231,6 +231,10 @@ body {
   margin-bottom: 10px;
 }
 
+.card-pregunta {
+  position: relative;
+}
+
 /* FORMULARIO */
 
 .bloque-formulario {
@@ -277,7 +281,7 @@ body {
   font-weight: 700;
   font-size: 0.96rem;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
 }
 
 .btn-principal {
@@ -300,6 +304,7 @@ body {
 .btn-secundario:hover,
 .btn-peligro:hover {
   transform: translateY(-1px);
+  filter: brightness(1.01);
 }
 
 .btn-principal:disabled,
@@ -308,6 +313,7 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  filter: none;
 }
 
 /* STATS */
@@ -401,7 +407,7 @@ body {
   border-radius: 16px;
   padding: 14px;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   background: #fff;
 }
 
@@ -415,9 +421,62 @@ body {
   margin-right: 10px;
 }
 
+.opcion span {
+  line-height: 1.5;
+}
+
 .opcion.seleccionada {
   border-color: var(--primary);
   background: #eff6ff;
+}
+
+.opcion.opcion-correcta {
+  background: #e8f7ec;
+  border-color: #43a363;
+  box-shadow: 0 0 0 3px rgba(67, 163, 99, 0.08);
+}
+
+.opcion.opcion-incorrecta {
+  background: #fdeaea;
+  border-color: #d34c4c;
+  box-shadow: 0 0 0 3px rgba(211, 76, 76, 0.08);
+}
+
+/* FEEDBACK */
+
+.feedback-wrap {
+  margin-top: 18px;
+}
+
+.feedback-box {
+  border-radius: 14px;
+  padding: 14px 16px;
+  line-height: 1.6;
+  border: 1px solid transparent;
+}
+
+.feedback-box strong {
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.feedback-box p {
+  margin: 6px 0 0 0;
+}
+
+.feedback-pendiente {
+  background: #f6f7fb;
+  border-color: #d9deea;
+}
+
+.feedback-correcto {
+  background: #eefaf1;
+  border-color: #93d5a5;
+}
+
+.feedback-incorrecto {
+  background: #fff2f2;
+  border-color: #e4a2a2;
 }
 
 /* RANKING */
@@ -631,5 +690,11 @@ pre {
   .btn-secundario,
   .btn-peligro {
     width: 100%;
+  }
+
+  .progreso-top,
+  .temporizador-box {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

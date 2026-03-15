@@ -1,4 +1,4 @@
-const preguntasBloque18 = [
+window.preguntasBloque18= [
   {
     pregunta: "Según el Comentario-Resumen (Punto D), la postura que defiende la independencia entre emoción y cognición sugiere que:",
     opciones: [

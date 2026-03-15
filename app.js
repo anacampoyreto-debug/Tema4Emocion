@@ -15,6 +15,8 @@ let nombreJugador = "";
 let temporizadorIntervalo = null;
 let tiempoRestante = null;
 let esModoExamen = false;
+let colaRepaso = [];
+let resultadoYaGuardado = false;
 
 /* =========================
    UTILIDADES
@@ -64,7 +66,8 @@ function normalizarPregunta(item, origen = "General") {
     pregunta: obtenerTextoPregunta(item),
     opciones: obtenerOpciones(item),
     correcta: obtenerRespuestaCorrecta(item),
-    explicacion: item.explicacion || ""
+    explicacion: item.explicacion || "",
+    repeticiones: item.repeticiones || 0
   };
 }
 
@@ -110,6 +113,34 @@ function estaRespuestaBien(item, respuestaUsuario) {
 
   const opcionTexto = item.opciones[respuestaUsuario];
   return String(opcionTexto).trim() === String(item.correcta).trim();
+}
+
+function gestionarRepeticionInteligente(item, respuestaMarcada) {
+  const acertada = estaRespuestaBien(item, respuestaMarcada);
+
+  if (modoActual !== "memoria-activa" && modoActual !== "repaso-errores") {
+    return;
+  }
+
+  if (!acertada) {
+    const repeticionesActuales = item.repeticiones || 0;
+
+    if (repeticionesActuales < 2) {
+      colaRepaso.push({
+        ...item,
+        repeticiones: repeticionesActuales + 1
+      });
+    }
+  }
+}
+
+function resetearEstadoModo() {
+  indiceActual = 0;
+  respuestasUsuario = [];
+  tiempoRestante = null;
+  esModoExamen = false;
+  colaRepaso = [];
+  resultadoYaGuardado = false;
 }
 
 /* =========================
@@ -182,7 +213,13 @@ function calcularFallosRespondidos() {
 
 function calcularNotaSobre10() {
   if (!preguntasActuales.length) return 0;
-  return (calcularAciertos() / preguntasActuales.length) * 10;
+
+  const aciertos = calcularAciertos();
+  const fallos = calcularFallosRespondidos();
+  const puntuacion = aciertos - (fallos * 0.33);
+  const nota = (puntuacion / preguntasActuales.length) * 10;
+
+  return Math.max(0, nota);
 }
 
 /* =========================
@@ -199,7 +236,9 @@ function guardarEstado() {
       modoActual,
       nombreJugador,
       tiempoRestante,
-      esModoExamen
+      esModoExamen,
+      colaRepaso,
+      resultadoYaGuardado
     })
   );
 }
@@ -219,6 +258,8 @@ function cargarEstado() {
     nombreJugador = estado.nombreJugador ?? "";
     tiempoRestante = estado.tiempoRestante ?? null;
     esModoExamen = estado.esModoExamen ?? false;
+    colaRepaso = Array.isArray(estado.colaRepaso) ? estado.colaRepaso : [];
+    resultadoYaGuardado = estado.resultadoYaGuardado ?? false;
 
     return preguntasActuales.length > 0;
   } catch {
@@ -284,6 +325,13 @@ function pintarRankingHTML() {
    PROGRESO
 ========================= */
 
+function actualizarAriaProgreso(porcentaje) {
+  const barraContenedor = document.querySelector(".barra-contenedor");
+  if (barraContenedor) {
+    barraContenedor.setAttribute("aria-valuenow", String(porcentaje));
+  }
+}
+
 function actualizarProgreso() {
   const total = preguntasActuales.length || 0;
   const respondidas = calcularRespondidas();
@@ -293,11 +341,13 @@ function actualizarProgreso() {
     total ? `${respondidas} de ${total} respondidas` : "Sin iniciar";
 
   BARRA_PROGRESO_EL.style.width = `${porcentaje}%`;
+  actualizarAriaProgreso(porcentaje);
 }
 
 function actualizarProgresoFinal() {
   PROGRESO_TEXTO_EL.textContent = "Examen completado";
   BARRA_PROGRESO_EL.style.width = "100%";
+  actualizarAriaProgreso(100);
 }
 
 /* =========================
@@ -309,9 +359,10 @@ function iniciarModoExamen() {
   nombreJugador = nombreInput ? nombreInput.value.trim() : "";
 
   modoActual = "examen";
+  resetearEstadoModo();
   esModoExamen = true;
+
   preguntasActuales = mezclarArray(bancoPreguntas).slice(0, 30);
-  indiceActual = 0;
   respuestasUsuario = Array(preguntasActuales.length).fill(null);
   tiempoRestante = 30 * 60;
 
@@ -329,12 +380,10 @@ function iniciarBloque(nombreBloque) {
   );
 
   modoActual = `bloque-${nombreBloque}`;
-  esModoExamen = false;
-  tiempoRestante = null;
+  resetearEstadoModo();
   detenerTemporizador();
 
   preguntasActuales = [...preguntasDelBloque];
-  indiceActual = 0;
   respuestasUsuario = Array(preguntasActuales.length).fill(null);
 
   guardarEstado();
@@ -424,7 +473,7 @@ function pantallaInicio() {
         <span class="insignia-portada">Preparación UNED</span>
         <h2>Entrena el Tema 4 con simulador y examen realista</h2>
         <p class="subtitulo-portada">
-          Elige cómo quieres estudiar: repaso completo, práctica aleatoria o simulacro de examen UNED con tiempo.
+          Elige cómo quieres estudiar: repaso completo, práctica aleatoria, memoria activa o simulacro de examen UNED con tiempo.
         </p>
       </div>
 
@@ -446,10 +495,16 @@ function pantallaInicio() {
           <span class="modo-texto">Entrena mezclando preguntas para ganar agilidad mental.</span>
         </button>
 
+        <button id="btnMemoriaActiva" class="modo-card">
+          <span class="modo-icono">🧩</span>
+          <span class="modo-titulo">Memoria activa</span>
+          <span class="modo-texto">Practica pregunta, corrige y repite automáticamente los fallos.</span>
+        </button>
+
         <button id="btnModoExamen" class="modo-card modo-card-examen">
           <span class="modo-icono">🧠</span>
           <span class="modo-titulo">Simulador de examen UNED</span>
-          <span class="modo-texto">30 preguntas aleatorias con temporizador para entrenar como en examen.</span>
+          <span class="modo-texto">30 preguntas aleatorias con temporizador y penalización tipo UNED.</span>
         </button>
 
         <button id="btnContinuar" class="modo-card">
@@ -474,6 +529,7 @@ function pantallaInicio() {
 
   document.getElementById("btnTemaCompleto").addEventListener("click", () => iniciarQuiz(false));
   document.getElementById("btnTemaAleatorio").addEventListener("click", () => iniciarQuiz(true));
+  document.getElementById("btnMemoriaActiva").addEventListener("click", iniciarMemoriaActiva);
   document.getElementById("btnModoExamen").addEventListener("click", iniciarModoExamen);
   document.getElementById("btnContinuar").addEventListener("click", continuarIntento);
   document.getElementById("btnVerRanking").addEventListener("click", pantallaRanking);
@@ -487,6 +543,8 @@ function pantallaInicio() {
   preguntasActuales = [];
   respuestasUsuario = [];
   indiceActual = 0;
+  colaRepaso = [];
+  resultadoYaGuardado = false;
   actualizarProgreso();
 }
 
@@ -516,12 +574,48 @@ function iniciarQuiz(aleatorio = false) {
   nombreJugador = nombreInput ? nombreInput.value.trim() : "";
 
   modoActual = aleatorio ? "simulador-aleatorio" : "simulador";
-  esModoExamen = false;
-  tiempoRestante = null;
+  resetearEstadoModo();
   detenerTemporizador();
 
   preguntasActuales = aleatorio ? mezclarArray(bancoPreguntas) : [...bancoPreguntas];
-  indiceActual = 0;
+  respuestasUsuario = Array(preguntasActuales.length).fill(null);
+
+  guardarEstado();
+  renderPregunta();
+}
+
+function iniciarMemoriaActiva() {
+  const nombreInput = document.getElementById("nombreJugador");
+  nombreJugador = nombreInput ? nombreInput.value.trim() : "";
+
+  modoActual = "memoria-activa";
+  resetearEstadoModo();
+  detenerTemporizador();
+
+  preguntasActuales = mezclarArray(bancoPreguntas);
+  respuestasUsuario = Array(preguntasActuales.length).fill(null);
+
+  guardarEstado();
+  renderPregunta();
+}
+
+function repasarErrores() {
+  const preguntasFalladas = preguntasActuales.filter((pregunta, i) => {
+    const respuesta = respuestasUsuario[i];
+    return !estaRespuestaBien(pregunta, respuesta);
+  });
+
+  if (!preguntasFalladas.length) {
+    alert("No has tenido errores. ¡Perfecto!");
+    pantallaInicio();
+    return;
+  }
+
+  modoActual = "repaso-errores";
+  resetearEstadoModo();
+  detenerTemporizador();
+
+  preguntasActuales = preguntasFalladas.map((p) => ({ ...p, repeticiones: 0 }));
   respuestasUsuario = Array(preguntasActuales.length).fill(null);
 
   guardarEstado();
@@ -542,6 +636,10 @@ function continuarIntento() {
 
   renderPregunta();
 }
+
+/* =========================
+   RENDER Y FEEDBACK
+========================= */
 
 function crearHTMLFeedback(item, respuestaMarcada) {
   if (respuestaMarcada === null || typeof respuestaMarcada === "undefined") {
@@ -592,6 +690,10 @@ function renderPregunta() {
   ESTADO_MODO_EL.textContent =
     modoActual === "examen"
       ? "Modo examen UNED"
+      : modoActual === "memoria-activa"
+      ? "Modo memoria activa"
+      : modoActual === "repaso-errores"
+      ? "Modo repaso de errores"
       : modoActual.startsWith("bloque-")
       ? `Modo ${item.bloque}`
       : modoActual === "simulador-aleatorio"
@@ -653,14 +755,18 @@ function renderPregunta() {
         <button id="btnReiniciarIntento" class="btn-secundario">↻ Reiniciar</button>
         <button id="btnAnterior" class="btn-secundario" ${indiceActual === 0 ? "disabled" : ""}>← Anterior</button>
         <button id="btnGuardar" class="btn-secundario">Guardar respuesta</button>
-        <button id="btnSiguiente" class="btn-principal">${indiceActual === preguntasActuales.length - 1 ? "Finalizar" : "Siguiente →"}</button>
+        <button id="btnSiguiente" class="btn-principal">${indiceActual === preguntasActuales.length - 1 && !colaRepaso.length ? "Finalizar" : "Siguiente →"}</button>
       </div>
     </section>
   `;
 
   document.querySelectorAll('input[name="respuesta"]').forEach((input) => {
     input.addEventListener("change", (e) => {
-      respuestasUsuario[indiceActual] = Number(e.target.value);
+      const respuestaElegida = Number(e.target.value);
+      respuestasUsuario[indiceActual] = respuestaElegida;
+
+      gestionarRepeticionInteligente(item, respuestaElegida);
+
       guardarEstado();
       actualizarProgreso();
       renderPregunta();
@@ -694,6 +800,13 @@ function renderPregunta() {
       indiceActual++;
       guardarEstado();
       renderPregunta();
+    } else if (colaRepaso.length) {
+      preguntasActuales = preguntasActuales.concat(colaRepaso);
+      respuestasUsuario = respuestasUsuario.concat(Array(colaRepaso.length).fill(null));
+      colaRepaso = [];
+      indiceActual++;
+      guardarEstado();
+      renderPregunta();
     } else {
       pantallaResultados();
     }
@@ -715,6 +828,8 @@ function reiniciarIntentoActual() {
     indiceActual = 0;
     tiempoRestante = 30 * 60;
     esModoExamen = true;
+    colaRepaso = [];
+    resultadoYaGuardado = false;
     guardarEstado();
     iniciarTemporizador();
     renderPregunta();
@@ -732,13 +847,19 @@ function reiniciarIntentoActual() {
     indiceActual = 0;
     tiempoRestante = null;
     esModoExamen = false;
+    colaRepaso = [];
+    resultadoYaGuardado = false;
     detenerTemporizador();
     guardarEstado();
     renderPregunta();
     return;
   }
 
-  if (modoActual === "simulador-aleatorio") {
+  if (modoActual === "memoria-activa") {
+    preguntasActuales = mezclarArray(bancoPreguntas);
+  } else if (modoActual === "repaso-errores") {
+    preguntasActuales = preguntasActuales.map((p) => ({ ...p, repeticiones: 0 }));
+  } else if (modoActual === "simulador-aleatorio") {
     preguntasActuales = mezclarArray(bancoPreguntas);
   } else {
     preguntasActuales = [...bancoPreguntas];
@@ -748,6 +869,8 @@ function reiniciarIntentoActual() {
   indiceActual = 0;
   tiempoRestante = null;
   esModoExamen = false;
+  colaRepaso = [];
+  resultadoYaGuardado = false;
   detenerTemporizador();
   guardarEstado();
   renderPregunta();
@@ -767,13 +890,13 @@ function mostrarRevision() {
 
       <div class="revision-lista">
         ${preguntasActuales.map((pregunta, i) => {
-          const respuestaUsuario = respuestasUsuario[i];
+          const respuestaUsuarioActual = respuestasUsuario[i];
           const correctaIndex = obtenerIndiceCorrecto(pregunta);
-          const respondida = respuestaUsuario !== null && typeof respuestaUsuario !== "undefined";
-          const acertada = respondida ? estaRespuestaBien(pregunta, respuestaUsuario) : false;
+          const respondida = respuestaUsuarioActual !== null && typeof respuestaUsuarioActual !== "undefined";
+          const acertada = respondida ? estaRespuestaBien(pregunta, respuestaUsuarioActual) : false;
 
-          const textoUsuario = respondida && pregunta.opciones[respuestaUsuario]
-            ? `${String.fromCharCode(65 + respuestaUsuario)}. ${escaparHTML(pregunta.opciones[respuestaUsuario])}`
+          const textoUsuario = respondida && pregunta.opciones[respuestaUsuarioActual]
+            ? `${String.fromCharCode(65 + respuestaUsuarioActual)}. ${escaparHTML(pregunta.opciones[respuestaUsuarioActual])}`
             : "No respondida";
 
           const textoCorrecta = correctaIndex >= 0 && pregunta.opciones[correctaIndex]
@@ -817,7 +940,11 @@ function pantallaResultados() {
   const fallos = total - aciertos;
   const nota = calcularNotaSobre10();
 
-  guardarEnRanking(nombreJugador || "Jugador", nota, aciertos, total);
+  if (!resultadoYaGuardado) {
+    guardarEnRanking(nombreJugador || "Jugador", nota, aciertos, total);
+    resultadoYaGuardado = true;
+  }
+
   esModoExamen = false;
   tiempoRestante = null;
   borrarEstado();
@@ -842,6 +969,7 @@ function pantallaResultados() {
 
       <div class="nav-botones">
         <button id="btnRepetir" class="btn-principal">Hacer otro intento</button>
+        <button id="btnRepasarErrores" class="btn-principal">Repasar errores</button>
         <button id="btnMostrarRevision" class="btn-secundario">Revisar respuestas</button>
         <button id="btnIrRanking" class="btn-secundario">Ver ranking</button>
         <button id="btnVolverInicioResultados" class="btn-secundario">Volver al inicio</button>
@@ -850,6 +978,7 @@ function pantallaResultados() {
   `;
 
   document.getElementById("btnRepetir").addEventListener("click", pantallaInicio);
+  document.getElementById("btnRepasarErrores").addEventListener("click", repasarErrores);
   document.getElementById("btnMostrarRevision").addEventListener("click", mostrarRevision);
   document.getElementById("btnIrRanking").addEventListener("click", pantallaRanking);
   document.getElementById("btnVolverInicioResultados").addEventListener("click", pantallaInicio);

@@ -1,3 +1,4 @@
+
 * {
   box-sizing: border-box;
 }
@@ -247,17 +248,23 @@ body {
   font-weight: 700;
 }
 
-.bloque-formulario input {
+.bloque-formulario input,
+.bloque-formulario select,
+#selectorBloque {
   width: 100%;
   padding: 14px 16px;
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   font-size: 1rem;
   outline: none;
+  background: #fff;
+  color: var(--text);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.bloque-formulario input:focus {
+.bloque-formulario input:focus,
+.bloque-formulario select:focus,
+#selectorBloque:focus {
   border-color: #93c5fd;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
 }
@@ -321,7 +328,9 @@ body {
 .btn-peligro:focus-visible,
 .bloque-card:focus-visible,
 .modo-card:focus-visible,
-.boton-podcast:focus-visible {
+.boton-podcast:focus-visible,
+#selectorBloque:focus-visible,
+#opciones button:focus-visible {
   outline: 3px solid rgba(59, 130, 246, 0.35);
   outline-offset: 3px;
 }
@@ -369,7 +378,8 @@ body {
   font-weight: 800;
 }
 
-#temporizadorExamen {
+#temporizadorExamen,
+#timerTexto {
   font-size: 1.18rem;
   color: #9a3412;
 }
@@ -400,7 +410,8 @@ body {
   font-weight: 800;
 }
 
-.pregunta-titulo {
+.pregunta-titulo,
+#pregunta {
   margin-bottom: 18px;
   line-height: 1.45;
   font-size: 1.18rem;
@@ -457,12 +468,55 @@ body {
   box-shadow: 0 0 0 3px rgba(211, 76, 76, 0.08);
 }
 
+/* MODELO CLÁSICO: BOTONES DE OPCIONES */
+
+#opciones {
+  display: grid;
+  gap: 12px;
+}
+
+#opciones button {
+  width: 100%;
+  text-align: left;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  cursor: pointer;
+  background: #fff;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+#opciones button:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+  transform: translateY(-1px);
+}
+
+#opciones button.correcta {
+  background: #e8f7ec;
+  border-color: #43a363;
+  box-shadow: 0 0 0 3px rgba(67, 163, 99, 0.08);
+}
+
+#opciones button.incorrecta {
+  background: #fdeaea;
+  border-color: #d34c4c;
+  box-shadow: 0 0 0 3px rgba(211, 76, 76, 0.08);
+}
+
+#opciones button.bloqueada {
+  opacity: 1;
+}
+
 /* FEEDBACK */
 
 .feedback-wrap {
   margin-top: 18px;
 }
 
+.feedback,
 .feedback-box {
   border-radius: 14px;
   padding: 14px 16px;
@@ -470,12 +524,14 @@ body {
   border: 1px solid transparent;
 }
 
-.feedback-box strong {
+.feedback-box strong,
+.feedback strong {
   display: inline-block;
   margin-bottom: 6px;
 }
 
-.feedback-box p {
+.feedback-box p,
+.feedback p {
   margin: 6px 0 0 0;
 }
 
@@ -484,14 +540,20 @@ body {
   border-color: #d9deea;
 }
 
-.feedback-correcto {
+.feedback-correcto,
+.feedback.correcto {
   background: #eefaf1;
   border-color: #93d5a5;
 }
 
-.feedback-incorrecto {
+.feedback-incorrecto,
+.feedback.incorrecto {
   background: #fff2f2;
   border-color: #e4a2a2;
+}
+
+.oculto {
+  display: none;
 }
 
 /* RANKING */
@@ -767,7 +829,8 @@ pre {
     padding: 18px;
   }
 
-  .pregunta-titulo {
+  .pregunta-titulo,
+  #pregunta {
     font-size: 1.05rem;
   }
 }

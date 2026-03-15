@@ -1,4 +1,4 @@
-const preguntasBloque8 = [
+window.preguntasBloque8 = [
   {
     pregunta: "En la introducción del tema, se cita a un autor que afirma que los efectos emocionales se pueden explicar en 'términos de ideas'. ¿A quién se refiere?",
     opciones: [

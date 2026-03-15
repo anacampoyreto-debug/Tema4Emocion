@@ -1,4 +1,4 @@
-const preguntasBloque7 = [
+window.preguntasBloque7 = [
   {
     pregunta: "Según Halgren (1992), ¿por qué la 'vía rápida' tálamo-amígdala podría no ser funcionalmente importante en humanos?",
     opciones: [

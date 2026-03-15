@@ -89,6 +89,29 @@ function obtenerBloquesDisponibles() {
   return unicos.sort((a, b) => obtenerNumeroDeBloque(a) - obtenerNumeroDeBloque(b));
 }
 
+function obtenerIndiceCorrecto(item) {
+  if (typeof item.correcta === "number") return item.correcta;
+
+  if (typeof item.correcta === "string") {
+    return item.opciones.findIndex(
+      (op) => String(op).trim() === String(item.correcta).trim()
+    );
+  }
+
+  return -1;
+}
+
+function estaRespuestaBien(item, respuestaUsuario) {
+  if (respuestaUsuario === null || typeof respuestaUsuario === "undefined") return false;
+
+  if (typeof item.correcta === "number") {
+    return respuestaUsuario === item.correcta;
+  }
+
+  const opcionTexto = item.opciones[respuestaUsuario];
+  return String(opcionTexto).trim() === String(item.correcta).trim();
+}
+
 /* =========================
    CARGA DE BLOQUES
 ========================= */
@@ -141,13 +164,8 @@ function calcularAciertos() {
     const respuesta = respuestasUsuario[i];
     if (respuesta === null || typeof respuesta === "undefined") return;
 
-    if (typeof pregunta.correcta === "number") {
-      if (respuesta === pregunta.correcta) aciertos++;
-    } else {
-      const opcionTexto = pregunta.opciones[respuesta];
-      if (String(opcionTexto).trim() === String(pregunta.correcta).trim()) {
-        aciertos++;
-      }
+    if (estaRespuestaBien(pregunta, respuesta)) {
+      aciertos++;
     }
   });
 
@@ -397,6 +415,7 @@ function pintarTarjetasBloques() {
 }
 
 function pantallaInicio() {
+  detenerTemporizador();
   ESTADO_MODO_EL.textContent = "Elige un modo de estudio";
 
   QUIZ_EL.innerHTML = `
@@ -464,6 +483,11 @@ function pantallaInicio() {
       iniciarBloque(boton.dataset.bloque);
     });
   });
+
+  preguntasActuales = [];
+  respuestasUsuario = [];
+  indiceActual = 0;
+  actualizarProgreso();
 }
 
 function pantallaRanking() {
@@ -519,6 +543,42 @@ function continuarIntento() {
   renderPregunta();
 }
 
+function crearHTMLFeedback(item, respuestaMarcada) {
+  if (respuestaMarcada === null || typeof respuestaMarcada === "undefined") {
+    return `
+      <div class="feedback-box feedback-pendiente">
+        <strong>Selecciona una opción</strong>
+        <p>Cuando marques una respuesta aparecerá aquí si es correcta o incorrecta y el porqué.</p>
+      </div>
+    `;
+  }
+
+  const correctaIndex = obtenerIndiceCorrecto(item);
+  const esCorrecta = estaRespuestaBien(item, respuestaMarcada);
+
+  if (esCorrecta) {
+    return `
+      <div class="feedback-box feedback-correcto">
+        <strong>✅ Correcta</strong>
+        <p>${escaparHTML(item.explicacion || "Has elegido la respuesta adecuada.")}</p>
+      </div>
+    `;
+  }
+
+  const textoRespuestaCorrecta =
+    correctaIndex >= 0 && item.opciones[correctaIndex]
+      ? `${String.fromCharCode(65 + correctaIndex)}. ${escaparHTML(item.opciones[correctaIndex])}`
+      : escaparHTML(String(item.correcta));
+
+  return `
+    <div class="feedback-box feedback-incorrecto">
+      <strong>❌ Incorrecta</strong>
+      <p><strong>Respuesta correcta:</strong> ${textoRespuestaCorrecta}</p>
+      <p><strong>Por qué:</strong> ${escaparHTML(item.explicacion || "Revisa el concepto clave de esta pregunta.")}</p>
+    </div>
+  `;
+}
+
 function renderPregunta() {
   if (!preguntasActuales.length) {
     pantallaInicio();
@@ -527,6 +587,7 @@ function renderPregunta() {
 
   const item = preguntasActuales[indiceActual];
   const respuestaMarcada = respuestasUsuario[indiceActual];
+  const correctaIndex = obtenerIndiceCorrecto(item);
 
   ESTADO_MODO_EL.textContent =
     modoActual === "examen"
@@ -564,15 +625,32 @@ function renderPregunta() {
       <h2 class="pregunta-titulo">${escaparHTML(item.pregunta)}</h2>
 
       <div class="opciones">
-        ${item.opciones.map((opcion, i) => `
-          <label class="opcion ${respuestaMarcada === i ? "seleccionada" : ""}">
-            <input type="radio" name="respuesta" value="${i}" ${respuestaMarcada === i ? "checked" : ""}>
-            <span>${String.fromCharCode(65 + i)}. ${escaparHTML(opcion)}</span>
-          </label>
-        `).join("")}
+        ${item.opciones.map((opcion, i) => {
+          const seleccionada = respuestaMarcada === i;
+          const yaRespondida = respuestaMarcada !== null && typeof respuestaMarcada !== "undefined";
+
+          let clases = "opcion";
+          if (seleccionada) clases += " seleccionada";
+
+          if (yaRespondida && i === correctaIndex) clases += " opcion-correcta";
+          if (yaRespondida && seleccionada && i !== correctaIndex) clases += " opcion-incorrecta";
+
+          return `
+            <label class="${clases}">
+              <input type="radio" name="respuesta" value="${i}" ${seleccionada ? "checked" : ""}>
+              <span>${String.fromCharCode(65 + i)}. ${escaparHTML(opcion)}</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
+
+      <div class="feedback-wrap">
+        ${crearHTMLFeedback(item, respuestaMarcada)}
       </div>
 
       <div class="nav-botones">
+        <button id="btnVolverInicioDirecto" class="btn-secundario">⌂ Inicio</button>
+        <button id="btnReiniciarIntento" class="btn-secundario">↻ Reiniciar</button>
         <button id="btnAnterior" class="btn-secundario" ${indiceActual === 0 ? "disabled" : ""}>← Anterior</button>
         <button id="btnGuardar" class="btn-secundario">Guardar respuesta</button>
         <button id="btnSiguiente" class="btn-principal">${indiceActual === preguntasActuales.length - 1 ? "Finalizar" : "Siguiente →"}</button>
@@ -584,8 +662,17 @@ function renderPregunta() {
     input.addEventListener("change", (e) => {
       respuestasUsuario[indiceActual] = Number(e.target.value);
       guardarEstado();
+      actualizarProgreso();
       renderPregunta();
     });
+  });
+
+  document.getElementById("btnVolverInicioDirecto").addEventListener("click", () => {
+    pantallaInicio();
+  });
+
+  document.getElementById("btnReiniciarIntento").addEventListener("click", () => {
+    reiniciarIntentoActual();
   });
 
   document.getElementById("btnAnterior").addEventListener("click", () => {
@@ -614,6 +701,56 @@ function renderPregunta() {
 
   actualizarProgreso();
   actualizarTemporizadorVisual();
+}
+
+function reiniciarIntentoActual() {
+  if (!preguntasActuales.length) {
+    pantallaInicio();
+    return;
+  }
+
+  if (modoActual === "examen") {
+    preguntasActuales = mezclarArray(bancoPreguntas).slice(0, 30);
+    respuestasUsuario = Array(preguntasActuales.length).fill(null);
+    indiceActual = 0;
+    tiempoRestante = 30 * 60;
+    esModoExamen = true;
+    guardarEstado();
+    iniciarTemporizador();
+    renderPregunta();
+    return;
+  }
+
+  if (modoActual.startsWith("bloque-")) {
+    const nombreBloque = modoActual.replace("bloque-", "");
+    const preguntasDelBloque = bancoPreguntas.filter(
+      (pregunta) => pregunta.bloque === nombreBloque
+    );
+
+    preguntasActuales = [...preguntasDelBloque];
+    respuestasUsuario = Array(preguntasActuales.length).fill(null);
+    indiceActual = 0;
+    tiempoRestante = null;
+    esModoExamen = false;
+    detenerTemporizador();
+    guardarEstado();
+    renderPregunta();
+    return;
+  }
+
+  if (modoActual === "simulador-aleatorio") {
+    preguntasActuales = mezclarArray(bancoPreguntas);
+  } else {
+    preguntasActuales = [...bancoPreguntas];
+  }
+
+  respuestasUsuario = Array(preguntasActuales.length).fill(null);
+  indiceActual = 0;
+  tiempoRestante = null;
+  esModoExamen = false;
+  detenerTemporizador();
+  guardarEstado();
+  renderPregunta();
 }
 
 function pantallaResultados() {
@@ -650,12 +787,14 @@ function pantallaResultados() {
       <div class="nav-botones">
         <button id="btnRepetir" class="btn-principal">Hacer otro intento</button>
         <button id="btnIrRanking" class="btn-secundario">Ver ranking</button>
+        <button id="btnVolverInicioResultados" class="btn-secundario">Volver al inicio</button>
       </div>
     </section>
   `;
 
   document.getElementById("btnRepetir").addEventListener("click", pantallaInicio);
   document.getElementById("btnIrRanking").addEventListener("click", pantallaRanking);
+  document.getElementById("btnVolverInicioResultados").addEventListener("click", pantallaInicio);
 
   actualizarProgresoFinal();
 }
@@ -677,7 +816,8 @@ function iniciarApp() {
   {
     pregunta: "¿Texto?",
     opciones: ["A", "B", "C", "D"],
-    correcta: 1
+    correcta: 1,
+    explicacion: "Motivo de la respuesta"
   }
 ];</pre>
       </section>

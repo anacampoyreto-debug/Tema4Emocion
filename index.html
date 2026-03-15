@@ -6,77 +6,89 @@
   <title>Tema 4 · Emoción y Procesamiento Cognitivo</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="app">
+  <div class="app">
 
-<header class="hero">
-<div class="hero-texto">
-<h1>Tema 4 · Emoción y Procesamiento Cognitivo</h1>
-<p>Web de estudio estilo estratega · entrenamiento, examen UNED y ranking</p>
-<span id="estadoModo" class="estado-modo">Elige un modo de estudio</span>
-</div>
-</header>
+    <header class="hero">
+      <div class="hero-texto">
+        <h1>Tema 4 · Emoción y Procesamiento Cognitivo</h1>
+        <p>Web de estudio estilo estratega · entrenamiento, examen UNED y ranking</p>
+        <span id="estadoModo" class="estado-modo">Elige un modo de estudio</span>
+      </div>
+    </header>
 
-<section class="recursos">
+    <section class="recursos">
 
-<div class="recurso">
-<h3>Mapa mental</h3>
-<img src="mapa_tema4.png" alt="Mapa mental del tema 4">
-</div>
+      <div class="recurso">
+        <h3>Mapa mental</h3>
+        <img
+          class="mapa-mental-img"
+          src="mapa_tema4.png"
+          alt="Mapa mental del tema 4"
+          loading="lazy"
+          decoding="async"
+        >
+      </div>
 
-<div class="recurso">
-<h3>Podcast del tema</h3>
-<audio controls>
-<source src="podcast_tema4.m4a" type="audio/mp4">
-Tu navegador no soporta audio.
-</audio>
-</div>
+      <div class="recurso podcast-card">
+        <h3>Podcast del tema</h3>
 
-</section>
+        <p class="podcast-texto">
+          Escucha el resumen del tema mientras entrenas las preguntas tipo test.
+        </p>
 
-<section class="progreso-box">
-<div class="progreso-top">
-<span>Progreso</span>
-<span id="progresoTexto">Sin iniciar</span>
-</div>
+        <a
+          class="boton-podcast"
+          href="https://drive.google.com/file/d/1jv1J8Jccrkd4eNnbp1xg5XZted2XN8xB/view?usp=sharing"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🎧 Escuchar podcast mientras hago el test
+        </a>
+      </div>
 
-<div class="barra-contenedor">
-<div id="barraProgreso" class="barra"></div>
-</div>
-</section>
+    </section>
 
-<main id="quiz"></main>
+    <section class="progreso-box">
+      <div class="progreso-top">
+        <span>Progreso</span>
+        <span id="progresoTexto">Sin iniciar</span>
+      </div>
 
-</div>
+      <div class="barra-contenedor">
+        <div id="barraProgreso" class="barra"></div>
+      </div>
+    </section>
 
+    <main id="quiz"></main>
 
-<!-- PREGUNTAS -->
-<script src="preguntas_bloque1.js"></script>
-<script src="preguntas_bloque2.js"></script>
-<script src="preguntas_bloque3.js"></script>
-<script src="preguntas_bloque4.js"></script>
-<script src="preguntas_bloque5.js"></script>
-<script src="preguntas_bloque6.js"></script>
-<script src="preguntas_bloque7.js"></script>
-<script src="preguntas_bloque8.js"></script>
-<script src="preguntas_bloque9.js"></script>
-<script src="preguntas_bloque10.js"></script>
-<script src="preguntas_bloque11.js"></script>
-<script src="preguntas_bloque12.js"></script>
-<script src="preguntas_bloque13.js"></script>
-<script src="preguntas_bloque14.js"></script>
-<script src="preguntas_bloque15.js"></script>
-<script src="preguntas_bloque16.js"></script>
-<script src="preguntas_bloque17.js"></script>
-<script src="preguntas_bloque18.js"></script>
-<script src="preguntas_bloque19.js"></script>
-<script src="preguntas_bloque20.js"></script>
+  </div>
 
+  <!-- PREGUNTAS -->
+  <script src="preguntas_bloque1.js"></script>
+  <script src="preguntas_bloque2.js"></script>
+  <script src="preguntas_bloque3.js"></script>
+  <script src="preguntas_bloque4.js"></script>
+  <script src="preguntas_bloque5.js"></script>
+  <script src="preguntas_bloque6.js"></script>
+  <script src="preguntas_bloque7.js"></script>
+  <script src="preguntas_bloque8.js"></script>
+  <script src="preguntas_bloque9.js"></script>
+  <script src="preguntas_bloque10.js"></script>
+  <script src="preguntas_bloque11.js"></script>
+  <script src="preguntas_bloque12.js"></script>
+  <script src="preguntas_bloque13.js"></script>
+  <script src="preguntas_bloque14.js"></script>
+  <script src="preguntas_bloque15.js"></script>
+  <script src="preguntas_bloque16.js"></script>
+  <script src="preguntas_bloque17.js"></script>
+  <script src="preguntas_bloque18.js"></script>
+  <script src="preguntas_bloque19.js"></script>
+  <script src="preguntas_bloque20.js"></script>
 
-<!-- MOTOR DEL SIMULADOR -->
-<script src="app.js"></script>
+  <!-- MOTOR DEL SIMULADOR -->
+  <script src="app.js"></script>
 
 </body>
 </html>

@@ -1,4 +1,4 @@
-const preguntasBloque20 = [
+window.preguntasBloqu201 = [
   {
     pregunta: "Según el Comentario-Resumen (Punto A), los procesos cognitivos se refieren a aquellos que permiten el conocimiento del mundo y la experiencia:",
     opciones: [

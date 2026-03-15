@@ -17,13 +17,12 @@
           Web de estudio estilo estratega · entrenamiento · simulador examen UNED · ranking
         </p>
         <span id="estadoModo" class="estado-modo">
-          Elige un modo de estudio
+          Elige un bloque de estudio
         </span>
       </div>
     </header>
 
     <section class="recursos">
-
       <div class="recurso">
         <h3>Mapa mental</h3>
         <img
@@ -50,7 +49,6 @@
           🎧 Escuchar podcast mientras hago el test
         </a>
       </div>
-
     </section>
 
     <section class="progreso-box">
@@ -64,6 +62,16 @@
       </div>
     </section>
 
+    <!-- MENÚ DE BLOQUES -->
+    <section id="menuBloques" class="menu-bloques"></section>
+
+    <!-- CONTROLES DE NAVEGACIÓN -->
+    <section id="navegacionQuiz" class="navegacion-quiz" style="display:none;">
+      <button id="btnVolverMenu" class="btn-nav">← Volver al menú</button>
+      <button id="btnReiniciarBloque" class="btn-nav">↻ Reiniciar bloque</button>
+    </section>
+
+    <!-- AQUÍ VA EL QUIZ -->
     <main id="quiz"></main>
 
   </div>

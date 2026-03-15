@@ -1,4 +1,4 @@
-const preguntasBloque4 = [
+window.preguntasBloque4= [
   {
     pregunta: "Según la distinción de Shiffrin y Schneider (1977), el procesamiento automático se caracteriza por:",
     opciones: [

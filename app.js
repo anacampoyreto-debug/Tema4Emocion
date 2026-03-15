@@ -753,6 +753,62 @@ function reiniciarIntentoActual() {
   renderPregunta();
 }
 
+function mostrarRevision() {
+  if (!preguntasActuales.length) {
+    pantallaInicio();
+    return;
+  }
+
+  ESTADO_MODO_EL.textContent = "Revisión del intento";
+
+  QUIZ_EL.innerHTML = `
+    <section class="card">
+      <h2>Revisión del intento</h2>
+
+      <div class="revision-lista">
+        ${preguntasActuales.map((pregunta, i) => {
+          const respuestaUsuario = respuestasUsuario[i];
+          const correctaIndex = obtenerIndiceCorrecto(pregunta);
+          const respondida = respuestaUsuario !== null && typeof respuestaUsuario !== "undefined";
+          const acertada = respondida ? estaRespuestaBien(pregunta, respuestaUsuario) : false;
+
+          const textoUsuario = respondida && pregunta.opciones[respuestaUsuario]
+            ? `${String.fromCharCode(65 + respuestaUsuario)}. ${escaparHTML(pregunta.opciones[respuestaUsuario])}`
+            : "No respondida";
+
+          const textoCorrecta = correctaIndex >= 0 && pregunta.opciones[correctaIndex]
+            ? `${String.fromCharCode(65 + correctaIndex)}. ${escaparHTML(pregunta.opciones[correctaIndex])}`
+            : escaparHTML(String(pregunta.correcta));
+
+          return `
+            <article class="revision-item ${acertada ? "revision-ok" : "revision-ko"}">
+              <div class="revision-top">
+                <span class="bloque-etiqueta">${escaparHTML(pregunta.bloque || "Bloque")}</span>
+                <span class="revision-estado">${acertada ? "✅ Correcta" : respondida ? "❌ Incorrecta" : "⏳ Sin responder"}</span>
+              </div>
+
+              <h3>${i + 1}. ${escaparHTML(pregunta.pregunta)}</h3>
+              <p><strong>Tu respuesta:</strong> ${textoUsuario}</p>
+              <p><strong>Respuesta correcta:</strong> ${textoCorrecta}</p>
+              <p><strong>Explicación:</strong> ${escaparHTML(pregunta.explicacion || "Sin explicación disponible.")}</p>
+            </article>
+          `;
+        }).join("")}
+      </div>
+
+      <div class="nav-botones">
+        <button id="btnVolverResultados" class="btn-secundario">Volver a resultados</button>
+        <button id="btnVolverInicioRevision" class="btn-principal">Volver al inicio</button>
+      </div>
+    </section>
+  `;
+
+  document.getElementById("btnVolverResultados").addEventListener("click", pantallaResultados);
+  document.getElementById("btnVolverInicioRevision").addEventListener("click", pantallaInicio);
+
+  actualizarProgresoFinal();
+}
+
 function pantallaResultados() {
   detenerTemporizador();
 
@@ -786,6 +842,7 @@ function pantallaResultados() {
 
       <div class="nav-botones">
         <button id="btnRepetir" class="btn-principal">Hacer otro intento</button>
+        <button id="btnMostrarRevision" class="btn-secundario">Revisar respuestas</button>
         <button id="btnIrRanking" class="btn-secundario">Ver ranking</button>
         <button id="btnVolverInicioResultados" class="btn-secundario">Volver al inicio</button>
       </div>
@@ -793,6 +850,7 @@ function pantallaResultados() {
   `;
 
   document.getElementById("btnRepetir").addEventListener("click", pantallaInicio);
+  document.getElementById("btnMostrarRevision").addEventListener("click", mostrarRevision);
   document.getElementById("btnIrRanking").addEventListener("click", pantallaRanking);
   document.getElementById("btnVolverInicioResultados").addEventListener("click", pantallaInicio);
 

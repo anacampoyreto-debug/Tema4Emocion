@@ -12,6 +12,28 @@ let temporizador = null;
 let tiempoRestante = 0;
 
 const STORAGE_CLAVE = "tema4_estado_bloques";
+const bancoBloques = {
+  1: window.preguntasBloque1 || [],
+  2: window.preguntasBloque2 || [],
+  3: window.preguntasBloque3 || [],
+  4: window.preguntasBloque4 || [],
+  5: window.preguntasBloque5 || [],
+  6: window.preguntasBloque6 || [],
+  7: window.preguntasBloque7 || [],
+  8: window.preguntasBloque8 || [],
+  9: window.preguntasBloque9 || [],
+  10: window.preguntasBloque10 || [],
+  11: window.preguntasBloque11 || [],
+  12: window.preguntasBloque12 || [],
+  13: window.preguntasBloque13 || [],
+  14: window.preguntasBloque14 || [],
+  15: window.preguntasBloque15 || [],
+  16: window.preguntasBloque16 || [],
+  17: window.preguntasBloque17 || [],
+  18: window.preguntasBloque18 || [],
+  19: window.preguntasBloque19 || [],
+  20: window.preguntasBloque20 || []
+};
 
 /* =========================
    UTILIDADES

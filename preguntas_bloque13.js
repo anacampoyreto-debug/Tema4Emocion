@@ -1,4 +1,4 @@
-const preguntasBloque13 = [
+window.preguntasBloque13 = [
   {
     pregunta: "Los procesos cognitivos se diferencian de los emocionales, según la tradición psicológica, en que los primeros:",
     opciones: [

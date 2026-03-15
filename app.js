@@ -1,3 +1,6 @@
+
+
+
 const QUIZ_EL = document.getElementById("quiz");
 const ESTADO_MODO_EL = document.getElementById("estadoModo");
 const PROGRESO_TEXTO_EL = document.getElementById("progresoTexto");
@@ -12,14 +15,9 @@ let indiceActual = 0;
 let respuestasUsuario = [];
 let modoActual = "simulador";
 let nombreJugador = "";
-
 let temporizadorIntervalo = null;
 let tiempoRestante = null;
 let esModoExamen = false;
-
-/* =========================
-   UTILIDADES
-========================= */
 
 function mezclarArray(array) {
   const copia = [...array];
@@ -40,13 +38,7 @@ function escaparHTML(texto) {
 }
 
 function obtenerTextoPregunta(item) {
-  return (
-    item.pregunta ||
-    item.enunciado ||
-    item.texto ||
-    item.question ||
-    "Pregunta sin texto"
-  );
+  return item.pregunta || item.enunciado || item.texto || item.question || "Pregunta sin texto";
 }
 
 function obtenerOpciones(item) {
@@ -66,41 +58,24 @@ function obtenerRespuestaCorrecta(item) {
 }
 
 function normalizarPregunta(item, origen = "General") {
-  const opciones = obtenerOpciones(item);
-  const correcta = obtenerRespuestaCorrecta(item);
-
   return {
     bloque: item.bloque || origen,
     pregunta: obtenerTextoPregunta(item),
-    opciones,
-    correcta
+    opciones: obtenerOpciones(item),
+    correcta: obtenerRespuestaCorrecta(item)
   };
 }
 
 function esArrayDePreguntas(valor) {
   if (!Array.isArray(valor) || valor.length === 0) return false;
-
   const ejemplo = valor[0];
   return (
     ejemplo &&
     typeof ejemplo === "object" &&
-    (
-      "pregunta" in ejemplo ||
-      "enunciado" in ejemplo ||
-      "texto" in ejemplo ||
-      "question" in ejemplo
-    ) &&
-    (
-      "opciones" in ejemplo ||
-      "respuestas" in ejemplo ||
-      "options" in ejemplo
-    )
+    ("pregunta" in ejemplo || "enunciado" in ejemplo || "texto" in ejemplo || "question" in ejemplo) &&
+    ("opciones" in ejemplo || "respuestas" in ejemplo || "options" in ejemplo)
   );
 }
-
-/* =========================
-   DETECCIÓN DE PREGUNTAS
-========================= */
 
 function recogerPreguntasDelWindow() {
   const candidatos = [];
@@ -109,70 +84,48 @@ function recogerPreguntasDelWindow() {
     try {
       const valor = window[clave];
       if (esArrayDePreguntas(valor)) {
-        candidatos.push({
-          nombre: clave,
-          datos: valor
-        });
+        candidatos.push({ nombre: clave, datos: valor });
       }
-    } catch (error) {
-      // Ignorar
-    }
+    } catch (e) {}
   }
 
   const vistos = new Set();
-  const arraysUnicos = candidatos.filter((candidato) => {
-    if (vistos.has(candidato.datos)) return false;
-    vistos.add(candidato.datos);
+  const arraysUnicos = candidatos.filter((c) => {
+    if (vistos.has(c.datos)) return false;
+    vistos.add(c.datos);
     return true;
   });
 
   let todas = [];
-
   arraysUnicos.forEach((entrada, i) => {
     const nombreBloque = entrada.nombre || `Bloque ${i + 1}`;
-    const normalizadas = entrada.datos.map((pregunta) =>
-      normalizarPregunta(pregunta, nombreBloque)
-    );
-    todas = todas.concat(normalizadas);
+    todas = todas.concat(entrada.datos.map((p) => normalizarPregunta(p, nombreBloque)));
   });
 
   return todas;
 }
 
-/* =========================
-   CÁLCULOS
-========================= */
-
 function calcularAciertos() {
   let aciertos = 0;
-
   preguntasActuales.forEach((pregunta, i) => {
-    const respuestaUsuario = respuestasUsuario[i];
-    if (respuestaUsuario === null || typeof respuestaUsuario === "undefined") return;
-
-    const correcta = pregunta.correcta;
-
-    if (typeof correcta === "number") {
-      if (respuestaUsuario === correcta) aciertos++;
+    const respuesta = respuestasUsuario[i];
+    if (respuesta === null || typeof respuesta === "undefined") return;
+    if (typeof pregunta.correcta === "number") {
+      if (respuesta === pregunta.correcta) aciertos++;
     } else {
-      const opcionTexto = pregunta.opciones[respuestaUsuario];
-      if (String(opcionTexto).trim() === String(correcta).trim()) aciertos++;
+      const opcionTexto = pregunta.opciones[respuesta];
+      if (String(opcionTexto).trim() === String(pregunta.correcta).trim()) aciertos++;
     }
   });
-
   return aciertos;
 }
 
 function calcularRespondidas() {
-  return respuestasUsuario.filter(
-    (respuesta) => respuesta !== null && typeof respuesta !== "undefined"
-  ).length;
+  return respuestasUsuario.filter((r) => r !== null && typeof r !== "undefined").length;
 }
 
 function calcularFallosRespondidos() {
-  const respondidas = calcularRespondidas();
-  const aciertos = calcularAciertos();
-  return respondidas - aciertos;
+  return calcularRespondidas() - calcularAciertos();
 }
 
 function calcularNotaSobre10() {
@@ -180,22 +133,19 @@ function calcularNotaSobre10() {
   return (calcularAciertos() / preguntasActuales.length) * 10;
 }
 
-/* =========================
-   GUARDADO DE ESTADO
-========================= */
-
 function guardarEstado() {
-  const estado = {
-    preguntasActuales,
-    indiceActual,
-    respuestasUsuario,
-    modoActual,
-    nombreJugador,
-    tiempoRestante,
-    esModoExamen
-  };
-
-  localStorage.setItem(STORAGE_ESTADO, JSON.stringify(estado));
+  localStorage.setItem(
+    STORAGE_ESTADO,
+    JSON.stringify({
+      preguntasActuales,
+      indiceActual,
+      respuestasUsuario,
+      modoActual,
+      nombreJugador,
+      tiempoRestante,
+      esModoExamen
+    })
+  );
 }
 
 function cargarEstado() {
@@ -208,15 +158,14 @@ function cargarEstado() {
 
     preguntasActuales = estado.preguntasActuales;
     indiceActual = estado.indiceActual ?? 0;
-    respuestasUsuario =
-      estado.respuestasUsuario ?? Array(estado.preguntasActuales.length).fill(null);
+    respuestasUsuario = estado.respuestasUsuario ?? Array(preguntasActuales.length).fill(null);
     modoActual = estado.modoActual ?? "simulador";
     nombreJugador = estado.nombreJugador ?? "";
     tiempoRestante = estado.tiempoRestante ?? null;
     esModoExamen = estado.esModoExamen ?? false;
 
     return preguntasActuales.length > 0;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -225,24 +174,18 @@ function borrarEstado() {
   localStorage.removeItem(STORAGE_ESTADO);
 }
 
-/* =========================
-   RANKING
-========================= */
-
 function obtenerRanking() {
   const raw = localStorage.getItem(STORAGE_RANKING);
   if (!raw) return [];
-
   try {
     return JSON.parse(raw);
-  } catch (error) {
+  } catch {
     return [];
   }
 }
 
 function guardarEnRanking(nombre, nota, aciertos, total) {
   const ranking = obtenerRanking();
-
   ranking.push({
     nombre: nombre || "Jugador",
     nota: Number(nota.toFixed(2)),
@@ -256,48 +199,35 @@ function guardarEnRanking(nombre, nota, aciertos, total) {
     return b.aciertos - a.aciertos;
   });
 
-  const top10 = ranking.slice(0, 10);
-  localStorage.setItem(STORAGE_RANKING, JSON.stringify(top10));
+  localStorage.setItem(STORAGE_RANKING, JSON.stringify(ranking.slice(0, 10)));
 }
 
 function pintarRankingHTML() {
   const ranking = obtenerRanking();
-
   if (!ranking.length) {
     return `<p class="sin-ranking">Aún no hay resultados guardados.</p>`;
   }
 
   return `
     <ol class="ranking-lista">
-      ${ranking
-        .map(
-          (item) => `
-            <li class="ranking-item">
-              <strong>${escaparHTML(item.nombre)}</strong>
-              <span> · Nota ${item.nota}</span>
-              <span> · ${item.aciertos}/${item.total}</span>
-              <div class="ranking-fecha">${escaparHTML(item.fecha)}</div>
-            </li>
-          `
-        )
-        .join("")}
+      ${ranking.map((item) => `
+        <li class="ranking-item">
+          <strong>${escaparHTML(item.nombre)}</strong>
+          <span> · Nota ${item.nota}</span>
+          <span> · ${item.aciertos}/${item.total}</span>
+          <div class="ranking-fecha">${escaparHTML(item.fecha)}</div>
+        </li>
+      `).join("")}
     </ol>
   `;
 }
-
-/* =========================
-   PROGRESO
-========================= */
 
 function actualizarProgreso() {
   const total = preguntasActuales.length || 0;
   const respondidas = calcularRespondidas();
   const porcentaje = total ? Math.round((respondidas / total) * 100) : 0;
 
-  PROGRESO_TEXTO_EL.textContent = total
-    ? `${respondidas} de ${total} respondidas`
-    : "Sin iniciar";
-
+  PROGRESO_TEXTO_EL.textContent = total ? `${respondidas} de ${total} respondidas` : "Sin iniciar";
   BARRA_PROGRESO_EL.style.width = `${porcentaje}%`;
 }
 
@@ -305,10 +235,6 @@ function actualizarProgresoFinal() {
   PROGRESO_TEXTO_EL.textContent = "Examen completado";
   BARRA_PROGRESO_EL.style.width = "100%";
 }
-
-/* =========================
-   TEMPORIZADOR
-========================= */
 
 function iniciarModoExamen() {
   const nombreInput = document.getElementById("nombreJugador");
@@ -328,7 +254,6 @@ function iniciarModoExamen() {
 
 function iniciarTemporizador() {
   detenerTemporizador();
-
   if (!esModoExamen || tiempoRestante === null) return;
 
   temporizadorIntervalo = setInterval(() => {
@@ -368,10 +293,6 @@ function actualizarTemporizadorVisual() {
   }
 }
 
-/* =========================
-   PANTALLAS
-========================= */
-
 function pantallaInicio() {
   ESTADO_MODO_EL.textContent = "Elige un modo de estudio";
 
@@ -400,25 +321,11 @@ function pantallaInicio() {
     </section>
   `;
 
-  document
-    .getElementById("btnTemaCompleto")
-    .addEventListener("click", () => iniciarQuiz(false));
-
-  document
-    .getElementById("btnTemaAleatorio")
-    .addEventListener("click", () => iniciarQuiz(true));
-
-  document
-    .getElementById("btnModoExamen")
-    .addEventListener("click", iniciarModoExamen);
-
-  document
-    .getElementById("btnContinuar")
-    .addEventListener("click", continuarIntento);
-
-  document
-    .getElementById("btnVerRanking")
-    .addEventListener("click", pantallaRanking);
+  document.getElementById("btnTemaCompleto").addEventListener("click", () => iniciarQuiz(false));
+  document.getElementById("btnTemaAleatorio").addEventListener("click", () => iniciarQuiz(true));
+  document.getElementById("btnModoExamen").addEventListener("click", iniciarModoExamen);
+  document.getElementById("btnContinuar").addEventListener("click", continuarIntento);
+  document.getElementById("btnVerRanking").addEventListener("click", pantallaRanking);
 }
 
 function pantallaRanking() {
@@ -435,16 +342,11 @@ function pantallaRanking() {
     </section>
   `;
 
-  document
-    .getElementById("btnVolverInicio")
-    .addEventListener("click", pantallaInicio);
-
-  document
-    .getElementById("btnBorrarRanking")
-    .addEventListener("click", () => {
-      localStorage.removeItem(STORAGE_RANKING);
-      pantallaRanking();
-    });
+  document.getElementById("btnVolverInicio").addEventListener("click", pantallaInicio);
+  document.getElementById("btnBorrarRanking").addEventListener("click", () => {
+    localStorage.removeItem(STORAGE_RANKING);
+    pantallaRanking();
+  });
 }
 
 function iniciarQuiz(aleatorio = false) {
@@ -466,16 +368,12 @@ function iniciarQuiz(aleatorio = false) {
 
 function continuarIntento() {
   const hay = cargarEstado();
-
   if (!hay) {
     alert("No hay un intento guardado.");
     return;
   }
 
-  if (esModoExamen) {
-    iniciarTemporizador();
-  }
-
+  if (esModoExamen) iniciarTemporizador();
   renderPregunta();
 }
 
@@ -508,16 +406,12 @@ function renderPregunta() {
         <div class="stat"><strong>Fallos</strong><span>${fallos}</span></div>
       </div>
 
-      ${
-        esModoExamen
-          ? `
+      ${esModoExamen ? `
         <div class="temporizador-box">
           <strong>Tiempo restante:</strong>
           <span id="temporizadorExamen">${formatearTiempo(tiempoRestante)}</span>
         </div>
-      `
-          : ""
-      }
+      ` : ""}
 
       <div class="bloque-info">
         <span class="bloque-etiqueta">${escaparHTML(item.bloque || "Bloque")}</span>
@@ -526,28 +420,18 @@ function renderPregunta() {
       <h2 class="pregunta-titulo">${escaparHTML(item.pregunta)}</h2>
 
       <div class="opciones">
-        ${item.opciones
-          .map(
-            (opcion, i) => `
-              <label class="opcion ${respuestaMarcada === i ? "seleccionada" : ""}">
-                <input type="radio" name="respuesta" value="${i}" ${
-              respuestaMarcada === i ? "checked" : ""
-            }>
-                <span>${String.fromCharCode(65 + i)}. ${escaparHTML(opcion)}</span>
-              </label>
-            `
-          )
-          .join("")}
+        ${item.opciones.map((opcion, i) => `
+          <label class="opcion ${respuestaMarcada === i ? "seleccionada" : ""}">
+            <input type="radio" name="respuesta" value="${i}" ${respuestaMarcada === i ? "checked" : ""}>
+            <span>${String.fromCharCode(65 + i)}. ${escaparHTML(opcion)}</span>
+          </label>
+        `).join("")}
       </div>
 
       <div class="nav-botones">
-        <button id="btnAnterior" class="btn-secundario" ${
-          indiceActual === 0 ? "disabled" : ""
-        }>← Anterior</button>
+        <button id="btnAnterior" class="btn-secundario" ${indiceActual === 0 ? "disabled" : ""}>← Anterior</button>
         <button id="btnGuardar" class="btn-secundario">Guardar respuesta</button>
-        <button id="btnSiguiente" class="btn-principal">
-          ${indiceActual === preguntasActuales.length - 1 ? "Finalizar" : "Siguiente →"}
-        </button>
+        <button id="btnSiguiente" class="btn-principal">${indiceActual === preguntasActuales.length - 1 ? "Finalizar" : "Siguiente →"}</button>
       </div>
     </section>
   `;
@@ -597,7 +481,6 @@ function pantallaResultados() {
   const nota = calcularNotaSobre10();
 
   guardarEnRanking(nombreJugador || "Jugador", nota, aciertos, total);
-
   esModoExamen = false;
   tiempoRestante = null;
   borrarEstado();
@@ -633,10 +516,6 @@ function pantallaResultados() {
   actualizarProgresoFinal();
 }
 
-/* =========================
-   INICIO
-========================= */
-
 function iniciarApp() {
   bancoPreguntas = recogerPreguntasDelWindow();
 
@@ -646,15 +525,13 @@ function iniciarApp() {
         <h2>No se han detectado preguntas</h2>
         <p>Revisa cómo están definidos tus archivos <code>preguntas_bloqueX.js</code>.</p>
         <p>Cada bloque debería contener un array de objetos parecido a este:</p>
-        <pre>
-const preguntasBloque1 = [
+        <pre>const preguntasBloque1 = [
   {
     pregunta: "¿Texto?",
     opciones: ["A", "B", "C", "D"],
     correcta: 1
   }
-];
-        </pre>
+];</pre>
       </section>
     `;
     return;
